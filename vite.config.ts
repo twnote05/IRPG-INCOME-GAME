@@ -1,4 +1,5 @@
-import { defineConfig } from 'vite'
+export default defineConfig({
+  base: '/IRPG-INCOME-GAME/',
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
