@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Investor RPG</title>
+    <meta name="description" content="Investor RPG — turn portfolio tracking and financial discipline into a retro RPG." />
+    <meta name="theme-color" content="#0a0c24" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Investor RPG" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <!-- digits only: DotGothic16 numbers read clearly (Pixelify's 8 looks like S); letters fall through to Pixelify -->
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&text=0123456789%2B-%E2%88%92%25/%3A%C3%97%E0%B8%BF%24&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet" />
+    <script>
+      // Apply the saved (or system) theme before first paint to avoid a light flash in dark mode.
+      try {
+        var p = JSON.parse(localStorage.getItem('investor-rpg:prefs') || '{}')
+        document.documentElement.dataset.theme = p.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        if (p.lang) document.documentElement.lang = p.lang
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

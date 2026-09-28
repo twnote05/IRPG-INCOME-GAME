@@ -1,0 +1,221 @@
+@import "tailwindcss";
+
+/* Pixel RPG theme (CoinQuest tokens, see พรอมพ์รูปแบบ Pixel art/).
+   The slate ramp is remapped: 900/950 are panel/well surfaces, 100–300 are text, so every `slate-*`
+   class in the components follows the theme. Light mode is parchment; dark mode (the design's home)
+   is midnight blue and redefines the same variables under html[data-theme="dark"]. */
+@theme {
+  --font-sans: "Noto Sans Thai", Tahoma, "Segoe UI", sans-serif;
+  --font-rpg: "DotGothic16", "Pixelify Sans", "Noto Sans Thai", monospace;
+  --font-mono: "DotGothic16", "Pixelify Sans", "Noto Sans Thai", ui-monospace, monospace;
+
+  --color-slate-50: #120c05;
+  --color-slate-100: #2a1d0e;
+  --color-slate-200: #3b2a14;
+  --color-slate-300: #4e3a22;
+  --color-slate-400: #6b5537;
+  --color-slate-500: #85704f;
+  --color-slate-600: #a38b66;
+  --color-slate-700: #bfa77f;
+  --color-slate-800: #dccaa4;
+  --color-slate-900: #f7f0dc;
+  --color-slate-950: #fffaf0;
+
+  /* title bars + header (names kept from the old theme) */
+  --color-retro-teal: #9c7418;  /* gold windows */
+  --color-retro-blue: #2a5aa0;  /* mana windows */
+  --color-retro-green: #2f7a3a; /* emerald windows */
+  --color-retro-ruby: #9e2f36;  /* ruby windows */
+  --color-retro-deep: #2a1d0e;  /* top bar */
+  --color-retro-mint: #e8c97a;  /* muted text on the top bar */
+  --color-retro-gold: #f2c14e;
+  --color-retro-cream: #f7f0dc;
+
+  /* bar fills from the design tokens */
+  --color-emerald-600: #4fae44;
+  --color-red-600: #e5484d;
+  --color-amber-500: #f2c14e;
+  --color-blue-600: #2f8fd8;
+
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-3xl: 0;
+}
+
+:root {
+  color-scheme: light;
+  --page: #e8dcc0;
+  --grid: rgb(90 60 20 / 0.08);
+  --frame: #8a6a3c;     /* panel border */
+  --frame-out: #2a1d0e; /* outer outline */
+  --hi: #fffaf0;        /* 1px top highlight */
+  --drop: rgb(42 29 14 / 0.35); /* hard shadow bottom-right */
+  --btn-shade: #bfa77f; /* 2px bottom shade on buttons */
+  --well: #fffaf0;
+  --face: #efe2c4;
+  --face-hover: #f7ecd4;
+  --face-pressed: #dccaa4;
+  --ink: #2a1d0e;
+  --muted: #a38b66;
+  --segment: rgb(255 255 255 / 0.55);
+  /* category palette (from โปรเจค 2, checked for color-blind separation) */
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #4a3aa7; --s7: #8a8780;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0f1235;
+  --grid: rgb(76 194 255 / 0.07);
+  --frame: #3c4aa8;
+  --frame-out: #0a0c24;
+  --hi: #5a68c8;
+  --drop: rgb(0 0 0 / 0.5);
+  --btn-shade: #10143a;
+  --well: #12163e;
+  --face: #262c66;
+  --face-hover: #2f367a;
+  --face-pressed: #1b2050;
+  --ink: #f7f0dc;
+  --muted: #8a92c8;
+  --segment: rgb(0 0 0 / 0.35);
+  --s1: #4cc2ff; --s2: #ff8a3d; --s3: #6fcf5f; --s4: #f2c14e; --s5: #ff7eb6; --s6: #a06cd5; --s7: #8a92c8;
+
+  --color-slate-50: #ffffff;
+  --color-slate-100: #f7f0dc;
+  --color-slate-200: #e9e3d0;
+  --color-slate-300: #cfcde0;
+  --color-slate-400: #adb2d8;
+  --color-slate-500: #8a92c8;
+  --color-slate-600: #6770a8;
+  --color-slate-700: #4a5391;
+  --color-slate-800: #2c3470;
+  --color-slate-900: #1b2050;
+  --color-slate-950: #12163e;
+  --color-retro-deep: #0a0c24;
+  --color-retro-mint: #8a92c8;
+
+  --color-emerald-600: #6fcf5f;
+  --color-blue-600: #4cc2ff;
+
+  /* accent text shades are dark-on-parchment in light mode; lift them for midnight surfaces */
+  --color-amber-700: #f2c14e;
+  --color-amber-800: #f7d27a;
+  --color-yellow-800: #f2c14e;
+  --color-red-700: #ff6b70;
+  --color-blue-700: #4cc2ff;
+  --color-emerald-700: #6fcf5f;
+  --color-violet-700: #b98ae6;
+  --color-purple-700: #c79cf0;
+}
+
+body {
+  font-synthesis-weight: none; /* the digit font has one weight: never fake-bold pixels */
+  background-color: var(--page);
+  /* 1px grid, like the design's tile board */
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 16px 16px;
+  color: var(--ink);
+  min-height: 100dvh;
+  -webkit-tap-highlight-color: transparent;
+}
+
+input[type="range"] { accent-color: #f2c14e; }
+
+@layer components {
+  /* pixel window: 2px frame + 2px dark outline + hard drop shadow, 1px highlight on top */
+  .bevel {
+    border: 2px solid var(--frame);
+    box-shadow: inset 0 2px 0 var(--hi), 0 0 0 2px var(--frame-out), 4px 4px 0 2px var(--drop);
+  }
+  .sunken {
+    border: 2px solid var(--frame-out);
+    background: var(--well);
+    box-shadow: inset 2px 2px 0 var(--drop);
+  }
+  .track {
+    border: 2px solid var(--frame-out);
+    background: var(--well);
+  }
+  .segmented::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(90deg, transparent 0 8px, var(--segment) 8px 10px);
+  }
+  /* 1px top shine on bar fills */
+  .segmented::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 2px;
+    background: rgb(255 255 255 / 0.35);
+  }
+
+  /* beveled button, 3 states: 1px top highlight, 2px bottom shade; pressed sinks */
+  .btn {
+    background: var(--face);
+    color: var(--ink);
+    border: 2px solid var(--frame-out);
+    box-shadow: inset 0 2px 0 var(--hi), inset 0 -3px 0 var(--btn-shade);
+    padding: 0.4rem 0.9rem 0.5rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .btn:hover:not(:disabled) { background: var(--face-hover); }
+  .btn:active:not(:disabled), .btn-pressed {
+    box-shadow: inset 0 3px 0 var(--btn-shade);
+    background: var(--face-pressed);
+  }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+  .btn:disabled { color: var(--muted); cursor: not-allowed; box-shadow: none; opacity: 0.7; }
+  .btn-primary { background: #f2c14e; color: #0a0c24; font-weight: 700; --hi: #fff3c4; --btn-shade: #b8862b; --face-pressed: #d9a73a; }
+  .btn-primary:hover:not(:disabled) { background: #f7cf6a; }
+  .btn-danger { background: #e5484d; color: #fff; --hi: #ff9a9d; --btn-shade: #8e2430; --face-pressed: #c23a3f; }
+  .btn-danger:hover:not(:disabled) { background: #ee5a5f; }
+
+  /* 1rem on phones so iOS Safari doesn't zoom into focused inputs */
+  .field {
+    border: 2px solid var(--frame-out);
+    background: var(--well);
+    color: var(--ink);
+    box-shadow: inset 2px 2px 0 var(--drop);
+    padding: 0.35rem 0.6rem;
+    font-size: 1rem;
+    outline: none;
+    caret-color: #f2c14e;
+  }
+  .field:focus { outline: 2px solid #f2c14e; outline-offset: -4px; }
+
+  /* sprites: never smooth the pixels */
+  .pixel { image-rendering: pixelated; shape-rendering: crispEdges; }
+}
+
+@keyframes shake { 0%, 100% { transform: translateX(0) } 25% { transform: translateX(-3px) } 75% { transform: translateX(3px) } }
+/* 2-frame idle: sprites hop 1 step, no easing (pixel art moves in whole steps) */
+@keyframes idle { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-6%) } }
+.animate-idle { animation: idle 1s steps(1, end) infinite; }
+/* hero frames: frame i of n is visible during [i/n, (i+1)/n) of the cycle (see <Hero>) */
+@keyframes show2 { 0%, 49.99% { opacity: 1 } 50%, 100% { opacity: 0 } }
+@keyframes show3 { 0%, 33.32% { opacity: 1 } 33.33%, 100% { opacity: 0 } }
+@keyframes show4 { 0%, 24.99% { opacity: 1 } 25%, 100% { opacity: 0 } }
+@keyframes hurt { 0%, 100% { filter: none } 50% { filter: sepia(1) saturate(6) hue-rotate(-40deg) brightness(1.1) } }
+.animate-hurt { animation: hurt 0.3s steps(1, end) 3; }
+@keyframes walkout { from { transform: translateX(0); opacity: 1 } to { transform: translateX(45%); opacity: 0 } }
+.animate-walkout { animation: walkout 0.8s linear forwards; }
+/* festival particles: move in whole-pixel steps like sprites do */
+@keyframes fall { from { transform: translateY(-10px) } to { transform: translateY(260px) } }
+.animate-fall { animation: fall 3s steps(40, end) infinite; }
+@keyframes rise { from { transform: translateY(0); top: 80% } to { transform: translateY(0); top: -15% } }
+.animate-rise { animation: rise 9s steps(30, end) infinite; }
+@keyframes sway { 0%, 100% { transform: rotate(-4deg) } 50% { transform: rotate(4deg) } }
+.animate-sway { animation: sway 2s steps(4, end) infinite; }
+@keyframes twinkle { 0%, 100% { opacity: 0; transform: scale(0.4) } 50% { opacity: 1; transform: scale(1) } }
+/* world picker planet: the map slides one pixel per step, a full turn every 40s */
+@keyframes planet { from { transform: translateX(0) } to { transform: translateX(-80px) } }
+.animate-planet { animation: planet 40s steps(80, end) infinite; }
+@media (prefers-reduced-motion: reduce) { .animate-idle, [class*="animate-"] { animation: none !important; } }
