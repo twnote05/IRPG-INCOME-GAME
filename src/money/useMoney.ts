@@ -30,7 +30,7 @@ export interface GasConfig { url: string; token: string }
 export type SyncState = { state: 'local' | 'syncing' | 'ok' | 'error'; at?: number; error?: string; added?: number }
 type PlanKind = 'income' | 'plan' | 'buckets'
 
-async function api<T>(cfg: GasConfig, action: string, extra: object = {}): Promise<T> {
+export async function api<T>(cfg: GasConfig, action: string, extra: object = {}): Promise<T> {
   if (!validGasUrl(cfg.url)) throw new Error('bad url')
   const res = await fetch(cfg.url.trim(), {
     method: 'POST',

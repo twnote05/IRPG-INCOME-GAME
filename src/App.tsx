@@ -12,6 +12,7 @@ import CompoundSimulator from './components/CompoundSimulator'
 import Clock from './components/Clock'
 import Home, { type World } from './components/Home'
 import Shop from './components/Shop'
+import GameData from './components/GameData'
 import QuestLog from './components/QuestLog'
 import TransactionModal from './components/TransactionModal'
 import WorldMap from './components/WorldMap'
@@ -37,7 +38,7 @@ const MONEY_NAV = [
 
 export default function App() {
   const money = useMoney()
-  const game = useGame(money.summary)
+  const game = useGame(money.summary, money.gas)
   const { s, stats, toasts, t, dark, lang } = game
 
   // The app always opens at the hero's lodge; the quick-add there keeps daily logging one step away.
@@ -151,7 +152,7 @@ export default function App() {
             onGo={(w, tb) => { if (tb) setMoneyTab(tb); setMode(w) }} />
         </main>
       ) : mode === 'hero' ? (
-        <main className="mx-auto grid max-w-5xl gap-4 p-3 pb-28 sm:p-4 md:grid-cols-2 md:pb-6"><CharacterSheet game={game} /><Shop game={game} /></main>
+        <main className="mx-auto grid max-w-5xl gap-4 p-3 pb-28 sm:p-4 md:grid-cols-2 md:pb-6"><CharacterSheet game={game} /><div className="space-y-4"><Shop game={game} /><GameData game={game} onSheet={() => { setMoneyTab('set'); setMode('money') }} /></div></main>
       ) : mode === 'money' ? (
         <main className="p-3 pb-28 sm:p-4 md:pb-6">
           <MoneyApp money={money} t={t} lang={lang} tab={moneyTab} setTab={goMoneyTab} />

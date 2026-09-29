@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "check": "node --experimental-strip-types src/lib/game.check.ts && node --experimental-strip-types src/lib/calendar.check.ts && node --experimental-strip-types src/money/logic.check.ts"
+    "check": "node --experimental-strip-types src/lib/game.check.ts && node --experimental-strip-types src/lib/calendar.check.ts && node --experimental-strip-types src/money/logic.check.ts && node gas/code.check.mjs"
   },
   "dependencies": {
     "framer-motion": "^13.4.4",

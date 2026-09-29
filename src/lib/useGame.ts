@@ -4,7 +4,9 @@ import { BOSS_REWARD, QUESTS, SHOP, assetAlerts, boost, boosted, questReward, ap
 import { useLivePrices } from './livePrices'
 import type { MoneySummary, Reward } from '../money/logic'
 import { DICT, alertTip } from './i18n'
-import { loadPrefs, loadState, savePrefs, saveState, seed, uid, type Prefs } from './storage'
+import { loadPrefs, loadState, parseState, savePrefs, saveState, seed, uid, type Prefs } from './storage'
+import { BACKUP, useGameSync } from './useGameSync'
+import type { GasConfig } from '../money/useMoney'
 
 const HIDDEN_KEY = 'investor-rpg:alerts.hidden' // alert id -> hidden until (YYYY-MM-DD)
 const SENT_KEY = 'investor-rpg:alerts.sent' // alert ids already pushed as OS notifications
@@ -30,11 +32,17 @@ function grant(st: GameState, q: Quest): GameState {
 
 const tx = (kind: Tx['kind'], sym: string, amount: number): Tx => ({ id: uid(), date: localDate(), kind, label: '', sym, amount })
 
-export function useGame(money?: MoneySummary & { rewards?: Reward[] }) {
+export function useGame(money?: MoneySummary & { rewards?: Reward[] }, gas: GasConfig | null = null) {
   const [s, setS] = useState<GameState>(loadState)
   const [toasts, setToasts] = useState<Toast[]>([])
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs)
   useEffect(() => saveState(s), [s])
+  const cloud = useGameSync(s, setS, gas)
+  // backup file / restore: the same JSON the sheet stores
+  const exportGame = () => JSON.stringify(s, null, 1)
+  const importGame = (raw: string) => { const next = parseState(raw); if (next) setS(next); return !!next }
+  const hasBackup = () => { try { return !!localStorage.getItem(BACKUP) } catch { return false } }
+  const undoFirstSync = () => { try { const raw = localStorage.getItem(BACKUP); return raw ? importGame(raw) : false } catch { return false } }
   useEffect(() => {
     savePrefs(prefs)
     document.documentElement.dataset.theme = prefs.theme
@@ -189,6 +197,6 @@ export function useGame(money?: MoneySummary & { rewards?: Reward[] }) {
   const updateProfile = (p: Partial<Profile>) => setS({ ...s, profile: { ...s.profile, ...p } })
   const reset = () => setS(seed())
 
-  return { alerts, hideAlert, notifyPerm, enableNotify, moneyLinked: !!money && money.income > 0, live, t, dark, lang: prefs.lang, toggleLang, toggleTheme, s, stats, toasts, isDone, completeQuest, upsertAsset, deleteAsset, deposit, updateProfile, reset, shop, setLook }
+  return { cloud, exportGame, importGame, hasBackup, undoFirstSync, alerts, hideAlert, notifyPerm, enableNotify, moneyLinked: !!money && money.income > 0, live, t, dark, lang: prefs.lang, toggleLang, toggleTheme, s, stats, toasts, isDone, completeQuest, upsertAsset, deleteAsset, deposit, updateProfile, reset, shop, setLook }
 }
 export type Game = ReturnType<typeof useGame>

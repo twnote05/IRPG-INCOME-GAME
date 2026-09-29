@@ -34,6 +34,14 @@ export function loadState(): GameState {
   return seed()
 }
 
+/** A game save from the sheet or a backup file; null unless it really is one (never replace data with junk). */
+export function parseState(raw: string): GameState | null {
+  try {
+    const d = JSON.parse(raw)
+    return d && typeof d === 'object' && d.profile && Array.isArray(d.assets) && Array.isArray(d.txs) ? { ...seed(), ...d } : null
+  } catch { return null }
+}
+
 export interface Prefs { lang: Lang; theme: 'light' | 'dark' }
 const PREFS_KEY = 'investor-rpg:prefs' // read by the inline script in index.html too
 

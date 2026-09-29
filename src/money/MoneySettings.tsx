@@ -5,7 +5,7 @@ import { Field, Panel, inputCls } from '../components/ui'
 import { looksLikeToken, validGasUrl } from './logic'
 import type { Money } from './useMoney'
 
-function download(name: string, text: string) {
+export function download(name: string, text: string) {
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' })), download: name })
   a.click()
   URL.revokeObjectURL(a.href)
