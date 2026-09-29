@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { SCENES } from '../lib/game'
 import { SKY, seasonOn, skyAt } from '../lib/calendar'
 import { previewSeason, useNow } from '../lib/useNow'
-import SeasonFx from './SeasonFx'
+import SeasonFx, { Ambience } from './SeasonFx'
 import type { GameState } from '../types'
 import type { Pose } from '../lib/sprites'
 import { Hero, Scene } from './Sprite'
@@ -18,6 +18,7 @@ export default function HeroStage({ s, pose = 'idle', className = '', children }
   return (
     <div className={`relative aspect-video overflow-hidden bg-[#0f1235] ${className}`}>
       <Scene name={SCENES[s.look.scene ?? 0] ?? SCENES[0]} recolor={SKY[skyAt(now.getHours())]} className="absolute inset-0 size-full" />
+      <Ambience sky={skyAt(now.getHours())} />
       <SeasonFx season={season} />
       {/* the ground in every scene starts at row 43 of 54 → feet at ~20% from the bottom */}
       <div className={`absolute inset-x-0 bottom-[16%] flex h-[66%] justify-center ${walking ? 'animate-walkout' : ''}`}>

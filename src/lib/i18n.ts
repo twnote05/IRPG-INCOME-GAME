@@ -340,6 +340,7 @@ const en = {
     shop: ['We have enough gold for new gear!', 'The shop has something shiny we can afford.'],
     reserve: ['Our emergency shield is thin. Build it before big quests.', 'Let\'s grow the emergency fund first — it\'s our HP.'],
     ouch: ['Ouch! −{n}', 'Oof, −{n} HP!', 'Hit for {n}!'],
+    yay: ['Yay! +{n} 💰', 'Loot! +{n}', 'Coins incoming: +{n}!'],
     idle: ['Consistency beats timing the market.', 'Small coins every day become a dragon hoard.', 'Needs first, wants later, invest always.', 'An index fund is a whole army, not one knight.', 'If it promises sky-high returns, it\'s probably a mimic.'],
   } as Record<string, string[]>,
   gdata: {
@@ -986,6 +987,7 @@ const th: Dict = {
     shop: ['ทองพอซื้ออุปกรณ์ใหม่แล้วนะ!', 'ร้านค้ามีของวิ้ง ๆ ที่เราซื้อไหวแล้ว'],
     reserve: ['โล่ฉุกเฉินยังบางอยู่ สร้างก่อนออกผจญภัยใหญ่นะ', 'สะสมเงินสำรองฉุกเฉินก่อน — นั่นคือ HP ของเรา'],
     ouch: ['โอ๊ย! −{n}', 'อึก… HP −{n}!', 'โดนไป {n}!'],
+    yay: ['เย้! +{n} 💰', 'ได้ของ! +{n}', 'เงินเข้า +{n}!'],
     idle: ['ลงทุนสม่ำเสมอ ชนะการจับจังหวะตลาด', 'เหรียญเล็ก ๆ ทุกวัน จะกลายเป็นกองสมบัติมังกร', 'ของจำเป็นก่อน ของอยากได้ทีหลัง ลงทุนเสมอ', 'กองทุนดัชนีคือกองทัพทั้งกอง ไม่ใช่อัศวินคนเดียว', 'ถ้าสัญญาผลตอบแทนสูงลิ่ว น่าจะเป็นหีบมิมิค'],
   },
   gdata: {

@@ -1,5 +1,5 @@
 import { NotebookPen, X } from 'lucide-react'
-import { Sprite } from '../components/Sprite'
+import { AnimSprite, Sprite } from '../components/Sprite'
 import { useMemo } from 'react'
 import QuickAdd from './QuickAdd'
 import CalendarView from './CalendarView'
@@ -55,7 +55,7 @@ export default function LogView({ money, t, lang }: { money: Money; t: Dict; lan
           </div>
         )}
         <div className="bevel flex items-center gap-3 bg-slate-900 px-3 py-2.5" title={t.money.streakHint}>
-          <Sprite name="flame" size={32} className={summary.streak ? 'animate-idle' : 'opacity-40 grayscale'} />
+          {summary.streak ? <AnimSprite name="flame" anim="flicker" size={32} /> : <Sprite name="flame" size={32} className="opacity-40 grayscale" />}
           <div>
             <div className="font-rpg text-lg text-slate-100">{t.money.streak(summary.streak)}</div>
             <div className="text-[11px] text-slate-500">{summary.loggedToday ? t.money.questDone : t.money.questTodo}</div>

@@ -18,7 +18,7 @@ import TransactionModal from './components/TransactionModal'
 import WorldMap from './components/WorldMap'
 import { Bar, Panel, TitleBar } from './components/ui'
 import MoneyApp, { type MoneyTab } from './money/MoneyApp'
-import { Sprite } from './components/Sprite'
+import { Gold, Sprite } from './components/Sprite'
 import type { SpriteName } from './lib/sprites'
 import { useMoney } from './money/useMoney'
 
@@ -125,7 +125,7 @@ export default function App() {
               </div>
               <Bar value={stats.exp - stats.levelFloor} max={stats.levelCeil - stats.levelFloor} color="bg-amber-500" className="h-2.5" />
             </div>
-            <div className="flex items-center gap-1 font-rpg text-sm text-retro-gold"><Sprite name="coin" size={16} /> {s.gold.toLocaleString()}</div>
+            <Gold gold={s.gold} className="font-rpg text-sm text-retro-gold" />
           </div>
           {mode === 'invest' && (
             <div className="flex items-center gap-4">

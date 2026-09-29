@@ -1,7 +1,7 @@
 import { Store } from 'lucide-react'
 import { GEAR_SLOTS, SHOP, frameCls, type ShopItem } from '../lib/game'
 import type { Game } from '../lib/useGame'
-import { Hero, Sprite } from './Sprite'
+import { Gold, Hero, Sprite } from './Sprite'
 import { Panel } from './ui'
 
 /** Gold → gear, titles and frames. Legendary gear is unlocked by badges instead of bought. */
@@ -33,7 +33,7 @@ export default function Shop({ game }: { game: Game }) {
 
   return (
     <Panel title={t.shop.title} icon={Store} glow="gold"
-      action={<span className="flex items-center gap-1 text-xs text-retro-gold"><Sprite name="coin" size={16} /> {s.gold.toLocaleString()}</span>}>
+      action={<Gold gold={s.gold} className="text-xs text-retro-gold" />}>
       <p className="mb-3 text-[11px] text-slate-500">{t.shop.hint}</p>
 
       <div className="mb-1.5 text-xs font-semibold text-slate-300">{t.shop.gear}</div>

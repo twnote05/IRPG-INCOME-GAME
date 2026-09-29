@@ -221,4 +221,13 @@ input[type="range"] { accent-color: #f2c14e; }
 /* speech bubble pops in two pixel steps */
 @keyframes pop { from { transform: scale(0.85) } to { transform: scale(1) } }
 .animate-pop { animation: pop 0.2s steps(2, end); transform-origin: bottom right; }
+/* scene life: clouds and birds cross in pixel steps, fireflies wander and blink, gold "+N" floats off */
+@keyframes drift { from { transform: translateX(-20vw) } to { transform: translateX(110vw) } }
+.animate-drift { animation: drift 60s steps(240, end) infinite; }
+@keyframes fly { 0% { transform: translate(-10vw, 0) } 50% { transform: translate(50vw, -6px) } 100% { transform: translate(110vw, 0) } }
+.animate-fly { animation: fly 14s steps(120, end) infinite; }
+@keyframes firefly { 0%, 100% { transform: translate(0, 0); opacity: 0.2 } 25% { transform: translate(6px, -8px); opacity: 1 } 50% { transform: translate(-4px, -14px); opacity: 0.4 } 75% { transform: translate(-8px, -4px); opacity: 1 } }
+.animate-firefly { animation: firefly 4s steps(16, end) infinite; }
+@keyframes floatup { from { transform: translateY(0); opacity: 1 } to { transform: translateY(-14px); opacity: 0 } }
+.animate-floatup { animation: floatup 1.4s steps(7, end) forwards; }
 @media (prefers-reduced-motion: reduce) { .animate-idle, [class*="animate-"] { animation: none !important; } }

@@ -1,7 +1,7 @@
 import { Award, Castle, Gem, ScrollText, Skull, Swords } from 'lucide-react'
 import type { Dict, Lang } from '../lib/i18n'
 import { MONSTERS } from '../lib/sprites'
-import { Sprite } from '../components/Sprite'
+import { AnimSprite, Sprite } from '../components/Sprite'
 import { Bar, Panel } from '../components/ui'
 import { ACHIEVEMENTS, CHEST_STEPS, REWARD, addDays, battleLog, isDebt, monsters, monthOf, payoffMonth, periodN, sum, thisMonth, todayISO, weekChallenge, weekStart } from './logic'
 import { dayLabel, fmt0, monthLabel } from './fmt'
@@ -65,7 +65,7 @@ export default function AdventureView({ money, t, lang }: { money: Money; t: Dic
           <ul className="grid gap-2 sm:grid-cols-2">
             {mobs.map(m => (
               <li key={m.name} className={`sunken flex items-center gap-2.5 p-2 ${m.state === 'over' ? 'opacity-70' : ''}`}>
-                <Sprite name={m.state === 'over' ? 'skull' : face(m.name)} size={48}
+                <AnimSprite anim={m.state === 'over' ? 'flicker' : 'squish'} name={m.state === 'over' ? 'skull' : face(m.name)} size={48}
                   className={m.state === 'warn' ? 'animate-[shake_0.6s_infinite]' : m.state === 'ok' ? 'animate-idle' : ''} />
                 <div className="min-w-0 flex-1">
                   <div className="flex justify-between gap-2 text-xs">

@@ -2063,6 +2063,26 @@ export const SPRITES = {
     '........................',
     '........................',
   ],
+  // scene ambience
+  cloud: [
+    '.....WWWW.......',
+    '...WWWWWWWW.WW..',
+    '.WWWWWWWWWWWWWW.',
+    'WWWWWWWWWWWWWWWW',
+    '.ssssssssssssss.',
+  ],
+  bird: [
+    'k.....k',
+    '.k...k.',
+    '..kkk..',
+    '.......',
+  ],
+  bird2: [
+    '.......',
+    '..kkk..',
+    '.k...k.',
+    'k.....k',
+  ],
 } satisfies Record<string, string[]>
 
 export type SpriteName = keyof typeof SPRITES
@@ -2117,6 +2137,29 @@ export function poseRows(rows: string[], f: Frame, held = false, base = false) {
 }
 
 /** Per-color SVG path data; horizontal runs of one color merge into one rect. */
+// ---------- frame helpers: extra animation frames made from a sprite, no hand-drawn copies ----------
+const blank = (w: number) => '.'.repeat(w)
+/** Narrower copy, centered (a coin turning edge-on). */
+export function squeezeX(rows: string[], w: number) {
+  const W = rows[0].length, pad = Math.floor((W - w) / 2)
+  return rows.map(r => blank(pad) + Array.from({ length: w }, (_, i) => r[Math.floor(((i + 0.5) * W) / w)]).join('') + blank(W - w - pad))
+}
+/** Shorter copy, standing on the same ground line (a slime squishing). */
+export function squashY(rows: string[], h: number) {
+  const H = rows.length
+  return [...Array.from({ length: H - h }, () => blank(rows[0].length)), ...Array.from({ length: h }, (_, i) => rows[Math.floor(((i + 0.5) * H) / h)])]
+}
+export const mirror = (rows: string[]) => rows.map(r => [...r].reverse().join(''))
+
+export type Anim = 'spin' | 'flicker' | 'squish' | 'flap'
+/** Frames and loop length (s) per animation. */
+export const ANIMS: Record<Anim, (name: SpriteName) => { frames: string[][]; dur: number }> = {
+  spin: n => { const r = SPRITES[n], w = r[0].length; return { frames: [r, squeezeX(r, Math.round(w * 0.6)), squeezeX(r, Math.max(2, Math.round(w * 0.2))), squeezeX(mirror(r), Math.round(w * 0.6))], dur: 0.6 } },
+  flicker: n => ({ frames: [SPRITES[n], mirror(SPRITES[n])], dur: 0.5 }),
+  squish: n => ({ frames: [SPRITES[n], squashY(SPRITES[n], SPRITES[n].length - 2)], dur: 0.9 }),
+  flap: () => ({ frames: [SPRITES.bird, SPRITES.bird2], dur: 0.4 }),
+}
+
 export function spritePaths(rows: string[], pal: Record<string, string> = PALETTE) {
   const byColor: Record<string, string> = {}
   rows.forEach((row, y) => {

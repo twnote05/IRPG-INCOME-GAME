@@ -1,5 +1,5 @@
-import { memo } from 'react'
-import { PALETTE, POSES, SPRITES, poseRows, spritePaths, type Frame, type Pose, type SpriteName } from '../lib/sprites'
+import { memo, useEffect, useRef, useState } from 'react'
+import { ANIMS, PALETTE, POSES, SPRITES, poseRows, spritePaths, type Anim, type Frame, type Pose, type SpriteName } from '../lib/sprites'
 import { HELD_SPRITES, heroLayers, heroPalette } from '../lib/game'
 import type { GameState, Look } from '../types'
 
@@ -20,6 +20,48 @@ const pathsOf = (name: SpriteName, recolor?: Record<string, string>, frame?: Fra
     cache.set(key, (paths = spritePaths(rows, recolor ? { ...PALETTE, ...recolor } : PALETTE)))
   }
   return paths
+}
+
+/**
+ * A sprite playing a looped frame animation (coin spin, flame flicker, slime squish, bird flap).
+ * Same trick as <Hero>: frames are stacked and CSS shows one at a time; reduced motion keeps frame 0.
+ */
+export const AnimSprite = memo(function AnimSprite({ name, anim, size = 16, className = '', play = true }: {
+  name: SpriteName; anim: Anim; size?: number; className?: string; play?: boolean
+}) {
+  const key = name + ':' + anim
+  let built = animCache.get(key)
+  if (!built) animCache.set(key, (built = (({ frames, dur }) => ({ dur, paths: frames.map(f => spritePaths(f)) }))(ANIMS[anim](name))))
+  const { paths, dur } = built
+  const rows = SPRITES[anim === 'flap' ? 'bird' : name], n = paths.length
+  return (
+    <svg viewBox={`0 0 ${rows[0].length} ${rows.length}`} width={(size * rows[0].length) / rows.length} height={size} className={`pixel inline-block shrink-0 ${className}`} aria-hidden>
+      {paths.map((p, i) => (
+        <g key={i} className={play ? 'animate-frames' : ''} style={play ? { opacity: i ? 0 : 1, animation: `show${n} ${dur}s linear infinite`, animationDelay: `${-((n - i) * dur) / n}s` } : { opacity: i ? 0 : 1 }}>
+          {Object.entries(p).map(([fill, d]) => <path key={fill} d={d} fill={fill} />)}
+        </g>
+      ))}
+    </svg>
+  )
+})
+const animCache = new Map<string, { dur: number; paths: Record<string, string>[] }>()
+
+/** Gold with a little payoff: the coin spins and "+N" floats up whenever the amount grows. */
+export function Gold({ gold, size = 16, className = '' }: { gold: number; size?: number; className?: string }) {
+  const prev = useRef(gold)
+  const [gain, setGain] = useState<{ n: number; id: number } | null>(null)
+  useEffect(() => {
+    if (gold > prev.current) setGain({ n: gold - prev.current, id: Date.now() })
+    prev.current = gold
+  }, [gold])
+  useEffect(() => { if (!gain) return; const id = setTimeout(() => setGain(null), 1600); return () => clearTimeout(id) }, [gain])
+  return (
+    <span className={`relative inline-flex items-center gap-1 ${className}`}>
+      <AnimSprite name="coin" anim="spin" size={size} play={!!gain} />
+      {gold.toLocaleString()}
+      {gain && <span key={gain.id} aria-hidden className="pointer-events-none absolute -top-3 right-0 animate-floatup font-mono text-xs text-amber-500 [text-shadow:1px_1px_0_#0a0c24]">+{gain.n.toLocaleString()}</span>}
+    </span>
+  )
 }
 
 /** A backdrop that fills its box, anchored to the bottom (the ground). */

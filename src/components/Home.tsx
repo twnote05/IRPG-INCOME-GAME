@@ -13,7 +13,7 @@ import { fmt0 } from '../money/fmt'
 import type { MoneyTab } from '../money/MoneyApp'
 import type { Money } from '../money/useMoney'
 import HeroStage from './HeroStage'
-import { Sprite } from './Sprite'
+import { AnimSprite, Gold, Sprite } from './Sprite'
 import { GLOBE_MAP, GLOBE_PAL, GLOBE_SHADE, GLOBE_SHADE_PAL } from '../lib/globe'
 import { Bar } from './ui'
 
@@ -45,6 +45,16 @@ export default function Home({ game, money, onGo, onHero }: { game: Game; money:
   const [ouch, setOuch] = useState('')
   useEffect(() => { if (!ouch) return; const id = setTimeout(() => setOuch(''), 2500); return () => clearTimeout(id) }, [ouch])
   const prevHp = useRef(day?.hp)
+  // income logged today makes the hero cheer
+  const inToday = sum(db.entries.filter(e => e.type === 'in' && e.date === today))
+  const prevIn = useRef(inToday)
+  useEffect(() => {
+    if (inToday > prevIn.current) {
+      play('cheer', 1400)
+      setOuch(t.talk.yay[Math.floor(Math.random() * t.talk.yay.length)].replace('{n}', fmt0(inToday - prevIn.current)))
+    }
+    prevIn.current = inToday
+  }, [inToday]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (day && prevHp.current !== undefined && day.hp < prevHp.current) {
       play('hurt', 900)
@@ -142,7 +152,7 @@ export default function Home({ game, money, onGo, onHero }: { game: Game; money:
           <button onClick={onHero} className="block w-full text-left">
             <span className="flex items-baseline justify-between gap-2">
               <span className="truncate font-rpg text-xl text-slate-100">{p.name}</span>
-              <span className="flex shrink-0 items-center gap-1 font-rpg text-sm text-amber-700"><Sprite name="coin" size={16} /> {s.gold.toLocaleString()}</span>
+              <Gold gold={s.gold} className="shrink-0 font-rpg text-sm text-amber-700" />
             </span>
             {s.title && <span className="block text-xs font-semibold text-violet-700">« {t.shop.items[s.title]} »</span>}
             <span className="block text-xs text-slate-400">{t.ranks[stats.rank]} · {t.jobs[p.job ?? 'salaried'].name}</span>
@@ -173,7 +183,7 @@ export default function Home({ game, money, onGo, onHero }: { game: Game; money:
             <span>STR <b className="text-amber-700">{stats.str}</b></span>
             <span>DEF <b className="text-emerald-700">{stats.def}</b></span>
             <span>INT <b className="text-blue-700">{stats.int}</b></span>
-            <span className="flex items-center gap-0.5"><Sprite name="flame" size={16} /> {summary.streak}</span>
+            <span className="flex items-center gap-0.5">{summary.streak ? <AnimSprite name="flame" anim="flicker" size={16} /> : <Sprite name="flame" size={16} className="opacity-40 grayscale" />} {summary.streak}</span>
             <span className="flex items-center gap-0.5"><Sprite name="medal" size={16} /> {badges}/{ACHIEVEMENTS.length}</span>
           </div>
 
