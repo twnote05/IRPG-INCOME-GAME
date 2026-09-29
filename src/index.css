@@ -218,4 +218,7 @@ input[type="range"] { accent-color: #f2c14e; }
 /* world picker planet: the map slides one pixel per step, a full turn every 40s */
 @keyframes planet { from { transform: translateX(0) } to { transform: translateX(-80px) } }
 .animate-planet { animation: planet 40s steps(80, end) infinite; }
+/* speech bubble pops in two pixel steps */
+@keyframes pop { from { transform: scale(0.85) } to { transform: scale(1) } }
+.animate-pop { animation: pop 0.2s steps(2, end); transform-origin: bottom right; }
 @media (prefers-reduced-motion: reduce) { .animate-idle, [class*="animate-"] { animation: none !important; } }

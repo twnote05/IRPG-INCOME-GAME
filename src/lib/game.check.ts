@@ -123,3 +123,19 @@ console.log('game.check: all good')
   assert.equal(lastUpdate({ ...w, txs: [{ id: 'x', date: '2026-09-25', kind: 'edit', label: '', sym: 'mmf', amount: 1 }] }, w.assets[3]), '2026-09-25')
 }
 console.log('asset watch ok')
+
+// hero chatter
+{
+  const { talkTopics, pickLine } = await import('./talk.ts')
+  const base = { hour: 22, weekday: 3, logged: false, rest: false, streak: 0, cheer: false, season: null, bossUp: false, canBuy: false, reserveLow: false }
+  const keys = (c: object) => talkTopics({ ...base, ...c }).map(x => x.key)
+  assert.ok(keys({ day: { hp: -300, max: 500, spent: true } }).includes('over'), 'over budget talk')
+  assert.ok(keys({}).includes('nolog') && keys({}).includes('night'), 'late + nothing logged')
+  assert.ok(!keys({ hour: 9 }).includes('nolog') && keys({ hour: 9 }).includes('morning'), 'morning, not nagging yet')
+  assert.ok(keys({ paydayIn: 0, season: 'songkran' }).includes('payday0') && keys({ season: 'songkran' }).includes('songkran'))
+  const topics = talkTopics({ ...base, day: { hp: -120, max: 500, spent: true } })
+  const lines = { over: ['over {n}'], idle: ['a', 'b'], night: ['n'], nolog: ['log?'] } as never
+  assert.equal(pickLine(topics, lines, undefined, () => 0), 'over 120', 'arg filled, heaviest first')
+  for (let i = 0; i < 20; i++) assert.notEqual(pickLine(topics, lines, 'over 120'), 'over 120', 'never repeats the last line')
+}
+console.log('hero chatter ok')

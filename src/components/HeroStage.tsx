@@ -11,7 +11,7 @@ import { Hero, Scene } from './Sprite'
  * The hero standing in a pixel landscape (castle / forest / mountains, picked in the look editor).
  * 16:9 so the ground line sits at the same height at every width; the hero scales with the stage.
  */
-export default function HeroStage({ s, pose = 'idle', caption, className = '', children }: { s: GameState; pose?: Pose; caption?: string; className?: string; children?: ReactNode }) {
+export default function HeroStage({ s, pose = 'idle', className = '', children }: { s: GameState; pose?: Pose; className?: string; children?: ReactNode }) {
   const walking = pose === 'walk'
   const now = useNow()
   const season = previewSeason ?? seasonOn(now.toLocaleDateString('sv-SE'))
@@ -24,9 +24,6 @@ export default function HeroStage({ s, pose = 'idle', caption, className = '', c
         <span aria-hidden className="absolute bottom-[1%] left-1/2 h-[4%] w-[14%] -translate-x-1/2 bg-black/40" />
         <Hero equip={s.equip} look={s.look} pose={pose} size={200} className="relative h-full w-auto" />
       </div>
-      {caption && (
-        <span className="absolute top-2 left-2 max-w-[70%] bg-black/65 px-2 py-1 text-[11px] leading-snug text-retro-cream">{caption}</span>
-      )}
       {children}
     </div>
   )

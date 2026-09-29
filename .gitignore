@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.tsbuildinfo
+# price server: virtualenv and secrets (Settrade / SEC keys)
+server/.venv/
+server/.env
+__pycache__/
+# personal finance data must never be committed
+*backup*.json
+*.db
+# local-only reference material (downloaded images, research PDFs) and tool settings
+พรอมพ์รูปแบบ Pixel art/
+ความรู้การลงทุน/
+.claude/

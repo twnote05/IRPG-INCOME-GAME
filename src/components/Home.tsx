@@ -1,9 +1,11 @@
 import { ChevronRight, X } from 'lucide-react'
-import { monthKey, thb } from '../lib/game'
+import { SHOP, monthKey, thb } from '../lib/game'
 import { useEffect, useRef, useState } from 'react'
 import { spritePaths, type Pose, type SpriteName } from '../lib/sprites'
 import { reducedMotion, usePoseFlash } from '../lib/usePoseFlash'
-import { upcoming } from '../lib/calendar'
+import { seasonOn, upcoming } from '../lib/calendar'
+import { previewSeason } from '../lib/useNow'
+import { pickLine, talkTopics } from '../lib/talk'
 import type { Game } from '../lib/useGame'
 import QuickAdd from '../money/QuickAdd'
 import { ACHIEVEMENTS, dayLog, monsters, monthOf, sum, thisMonth, todayISO, weekChallenge, weekStart } from '../money/logic'
@@ -16,6 +18,8 @@ import { GLOBE_MAP, GLOBE_PAL, GLOBE_SHADE, GLOBE_SHADE_PAL } from '../lib/globe
 import { Bar } from './ui'
 
 export type World = 'money' | 'invest'
+// pixel speech-bubble edge: a 3px black line per side (corners left open, so they read as notched) + a soft offset shadow
+const BUBBLE_EDGE = '0 -3px 0 #0a0c24, 0 3px 0 #0a0c24, -3px 0 0 #0a0c24, 3px 0 0 #0a0c24, 6px 6px 0 #0a0c2466'
 
 /** Hero's lodge: who you are, how each part of your money is doing, and the doors into both worlds. */
 export default function Home({ game, money, onGo, onHero }: { game: Game; money: Money; onGo: (w: World, tab?: MoneyTab) => void; onHero: () => void }) {
@@ -34,16 +38,18 @@ export default function Home({ game, money, onGo, onHero }: { game: Game; money:
   const badges = summary.rewards.filter(r => r.kind === 'ach').length
   const bossDown = s.bossDefeated === monthKey()
   // the hero's body shows how today's budget is going
-  const mood: { pose: Pose; text?: string } = !day ? { pose: 'idle' }
-    : day.hp < 0 ? { pose: 'sit', text: t.home.moodSit(fmt0(-day.hp)) }
-    : day.hp < day.max * 0.3 ? { pose: 'tired', text: t.home.moodTired(fmt0(day.hp)) }
-    : ch.done ? { pose: 'cheer', text: t.home.moodCheer }
-    : { pose: 'idle' }
+  const pose: Pose = !day ? 'idle' : day.hp < 0 ? 'sit' : day.hp < day.max * 0.3 ? 'tired' : ch.done ? 'cheer' : 'idle'
   // every logged expense is a hit; crossing below 0 knocks the hero down (then the resting pose is 'sit')
   const [flash, play] = usePoseFlash()
+  // chatter: a random line that fits right now; changes every 12s, on tap, or when the context changes
+  const [ouch, setOuch] = useState('')
+  useEffect(() => { if (!ouch) return; const id = setTimeout(() => setOuch(''), 2500); return () => clearTimeout(id) }, [ouch])
   const prevHp = useRef(day?.hp)
   useEffect(() => {
-    if (day && prevHp.current !== undefined && day.hp < prevHp.current) play('hurt', 900)
+    if (day && prevHp.current !== undefined && day.hp < prevHp.current) {
+      play('hurt', 900)
+      setOuch(t.talk.ouch[Math.floor(Math.random() * t.talk.ouch.length)].replace('{n}', fmt0(prevHp.current - day.hp)))
+    }
     prevHp.current = day?.hp
   }, [day?.hp]) // eslint-disable-line react-hooks/exhaustive-deps
   // worlds live behind a small button on the card (phones have the taskbar; this keeps the lodge short)
@@ -68,6 +74,27 @@ export default function Home({ game, money, onGo, onHero }: { game: Game; money:
   const next = soon.find(e => e.kind !== 'payday') ?? soon[0]
   const sale = soon.find(e => e.kind === 'sale' && e.inDays <= 3)
   const watch = game.alerts.filter(a => a.level !== 'info')
+  const now = new Date()
+  const topics = talkTopics({
+    hour: now.getHours(), weekday: now.getDay(),
+    day: day && { hp: day.hp, max: day.max, spent: day.spent > 0 },
+    logged: summary.loggedToday, rest: rest.includes(today), streak: summary.streak, cheer: ch.done,
+    paydayIn: soon.find(e => e.kind === 'payday' && e.inDays <= 7)?.inDays,
+    sale: sale && t.cal.names[sale.id], season: previewSeason ?? seasonOn(today),
+    alert: game.alerts.find(a => a.level !== 'info')?.asset.symbol,
+    bossUp: !bossDown && stats.mpMax > 0,
+    canBuy: SHOP.some(x => !s.owned.includes(x.id) && x.price <= s.gold && (!x.unlock || s.claimed[x.unlock])),
+    reserveLow: stats.monthsCovered < stats.hpMonths / 2,
+  })
+  const topicKey = topics.map(x => x.key + (x.arg ?? '')).join('|') + game.lang
+  const [line, setLine] = useState('')
+  const say = () => setLine(l => pickLine(topics, t.talk, l))
+  useEffect(() => {
+    say()
+    const id = setInterval(say, 12000)
+    return () => clearInterval(id)
+  }, [topicKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  const bubble = flash === 'walk' ? '' : ouch || line
   const alerts = [
     ...(watch.length ? [{ text: `🔔 ${t.alerts.home(watch.length, t.alerts.head(watch[0]))}`, tone: watch[0].level === 'bad' ? 'text-red-700' : 'text-amber-800', go: true }] : []),
     ...(sale ? [{ text: sale.inDays === 0 ? t.cal.saleToday(t.cal.names[sale.id]) : t.cal.saleSoon(t.cal.names[sale.id], sale.inDays), tone: 'text-violet-700' }] : []),
@@ -88,11 +115,23 @@ export default function Home({ game, money, onGo, onHero }: { game: Game; money:
       <section className="bevel grid overflow-hidden bg-slate-900 sm:grid-cols-2">
         <div className="relative">
           <button onClick={onHero} className="relative block w-full text-left" aria-label={t.home.heroInfo}>
-            <HeroStage s={s} pose={flash ?? mood.pose} caption={flash === 'walk' ? undefined : mood.text} />
+            <HeroStage s={s} pose={flash ?? pose} />
             <span className="absolute right-2 bottom-2 flex items-center gap-0.5 bg-black/60 px-1.5 py-0.5 text-[10px] text-retro-cream">
               {t.home.heroInfo} <ChevronRight size={12} />
             </span>
           </button>
+          {bubble && (
+            <button key={bubble} onClick={say} aria-live="polite" title={t.home.talkMore}
+              className="absolute top-3 left-3 max-w-[48%] animate-pop bg-[#f7f0dc] px-2 py-1 text-left text-[11px] leading-snug text-[#2a1d0e]"
+              style={{ boxShadow: BUBBLE_EDGE }}>
+              {bubble}
+              {/* stepped pixel tail, bottom-right, pointing down at the hero */}
+              <svg aria-hidden viewBox="0 0 6 4" className="pixel absolute -bottom-[12px] right-3 h-3 w-[18px]">
+                <path d="M0 0h6v1h-1v1h-1v1h-1v1h-1v-2h-1v-1h-1z" fill="#0a0c24" />
+                <path d="M1 0h4v1h-1v1h-1v1h-1v-2h-1z" fill="#f7f0dc" />
+              </svg>
+            </button>
+          )}
           <button onClick={() => setPicking(true)} aria-haspopup="dialog"
             className="btn btn-primary absolute bottom-2 left-2 flex items-center gap-1 !px-1.5 !py-1 text-xs shadow-[2px_2px_0_#0a0c24]">
             <Sprite name="map" size={20} className="animate-idle" /> {t.home.pick}
