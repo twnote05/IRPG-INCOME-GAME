@@ -12,3 +12,6 @@ __pycache__/
 พรอมพ์รูปแบบ Pixel art/
 ความรู้การลงทุน/
 .claude/
+
+# brainstorming mockups (local only)
+.superpowers/
