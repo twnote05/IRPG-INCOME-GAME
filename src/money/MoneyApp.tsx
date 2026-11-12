@@ -1,6 +1,5 @@
 import { Settings2 } from 'lucide-react'
 import type { Dict, Lang } from '../lib/i18n'
-import AdventureView from './AdventureView'
 import LogView from './LogView'
 import MoneySettings, { SyncStatus } from './MoneySettings'
 import PlanView from './PlanView'
@@ -8,9 +7,9 @@ import SummaryView from './SummaryView'
 import { monthLabel } from './fmt'
 import type { Money } from './useMoney'
 
-export type MoneyTab = 'log' | 'adv' | 'plan' | 'sum' | 'set'
+export type MoneyTab = 'log' | 'plan' | 'sum' | 'set'
 /** Settings is opened a few times a year, so it sits behind the gear instead of taking a tab. */
-export const MONEY_TABS: MoneyTab[] = ['log', 'adv', 'plan', 'sum']
+export const MONEY_TABS = ['log', 'plan', 'sum'] as const satisfies readonly MoneyTab[]
 
 export default function MoneyApp({ money, t, lang, tab, setTab }: { money: Money; t: Dict; lang: Lang; tab: MoneyTab; setTab: (t: MoneyTab) => void }) {
   return (
@@ -37,7 +36,6 @@ export default function MoneyApp({ money, t, lang, tab, setTab }: { money: Money
       {money.gas && tab !== 'set' && <div className="-mt-1 text-right"><SyncStatus money={money} t={t} /></div>}
 
       {tab === 'log' && <LogView money={money} t={t} lang={lang} />}
-      {tab === 'adv' && <AdventureView money={money} t={t} lang={lang} />}
       {tab === 'plan' && <PlanView money={money} t={t} lang={lang} />}
       {tab === 'sum' && <SummaryView money={money} t={t} lang={lang} />}
       {tab === 'set' && <MoneySettings money={money} t={t} />}

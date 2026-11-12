@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {
   alloc, budgetState, byAccount, carryMonth, dailyBudget, dateInMonth, daysInMonth, evalAmount, fuelCost, guessEnv,
   looksLikeToken, mergeBackup, mergeIntoRemote, nextMonth, nextPeriod, parseQuick, payoffMonth, periodN, pieData,
-  prevMonth, sum, summarizeMoney, logStreak, bucketTotals, goalProgress, validGasUrl, validMonth, vsPlan, yearMonths, bestStreak, dayLog, moneyRewards, weekStart, addDays, battleLog, weekChallenge, type MoneyDb,
+  prevMonth, sum, logStreak, bucketTotals, goalProgress, validGasUrl, validMonth, vsPlan, yearMonths, bestStreak, dayLog, moneyRewards, weekStart, addDays, battleLog, weekChallenge, type MoneyDb,
 } from './logic.ts'
 
 const eq = (a: unknown, b: unknown, m: string) => assert.deepEqual(a, b, m)
@@ -150,16 +150,6 @@ const doc: MoneyDb = {
     e('5', '2026-09-01', 'out', 5000), e('6', '2026-09-28', 'out', 120), e('7', '2026-05-01', 'out', 99999),
   ],
 }
-const s = summarizeMoney(doc, new Date(2026, 8, 28))
-eq(s.income, 45000, 'income')
-eq(s.planned, 15000, 'planned')
-eq(s.spent, 5120, 'spent this month')
-eq(s.avgExpense, 13000, 'avg of last 3 completed months')
-eq(s.investPct, 30, 'only the DCA bucket, shown as %')
-eq(s.investBudget, 9000, '(45000 − 15000) × 0.3')
-eq(s.loggedToday, true, 'logged today')
-eq(summarizeMoney(doc, new Date(2026, 9, 5)).income, 45000, 'October falls back to latest planned income')
-eq(summarizeMoney(doc, new Date(2026, 9, 5)).investBudget, 9000, 'and its buckets')
 eq(sum([{ amount: 1 }, { amount: '2' as unknown as number }]), 3, 'sum tolerates strings')
 
 // --- game layer ---

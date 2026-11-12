@@ -228,38 +228,9 @@ export function mergeBackup(db: MoneyDb, incoming: Partial<MoneyDb> | Entry[]): 
   }
 }
 
-// ---------- what the investing side (RPG) needs ----------
+// Buckets whose name means "this is being invested".
 const INVEST_BUCKET = /ลงทุน|invest|dca|หุ้น|กองทุน|เกษียณ/i
 
-export function summarizeMoney(db: MoneyDb, now = new Date()) {
-  const today = todayISO(now)
-  const month = today.slice(0, 7)
-  const flow = (m: string, type: Entry['type']) => sum(db.entries.filter(e => e.type === type && e.date.startsWith(m)))
-
-  // Planned income for this month, else the latest earlier month that has one, else logged income
-  const withIncome = Object.keys(db.months).filter(m => m <= month).sort().reverse().find(m => sum(db.months[m].income) > 0)
-  const plan = db.months[month]
-  const income = withIncome ? sum(db.months[withIncome].income) : flow(month, 'in')
-  const planned = plan ? sum(plan.plan) : 0
-
-  // Typical monthly spending: average of the last 3 completed months that have entries
-  const past = [...new Set(db.entries.filter(e => e.type === 'out' && monthOf(e) < month).map(monthOf))].sort().slice(-3)
-  const avgExpense = past.length ? sum(past, m => flow(m, 'out')) / past.length : planned
-
-  // DCA budget = the investing buckets' share of what's left after committed spending
-  const buckets = (plan ?? (withIncome ? db.months[withIncome] : undefined))?.buckets ?? []
-  const investFrac = sum(buckets.filter(b => INVEST_BUCKET.test(b.name)), b => b.pct)
-  const left = income - (plan ? planned : withIncome ? sum(db.months[withIncome].plan) : 0)
-
-  return {
-    month, income, planned, spent: flow(month, 'out'),
-    investPct: Math.round(investFrac * 1000) / 10,
-    investBudget: Math.round(Math.max(0, left) * investFrac),
-    avgExpense: Math.round(avgExpense),
-    loggedToday: db.entries.some(e => e.date === today),
-  }
-}
-export type MoneySummary = ReturnType<typeof summarizeMoney>
 
 // ---------- game layer ----------
 /** Consecutive days with at least one entry, ending today (or yesterday — today isn't over yet). */
