@@ -44,7 +44,7 @@ export default function TransactionModal({ t, initial, onSave, onClose }: { t: D
         initial={{ y: 40 }} animate={{ y: 0 }} exit={{ y: 40 }}
         className="bevel flex max-h-[92dvh] w-full flex-col bg-slate-900 sm:max-w-lg">
         <TitleBar id="tx-title" title={initial ? t.modal.editTitle : t.modal.newTitle}
-          action={<button type="button" onClick={onClose} className="btn px-1.5 py-0.5" aria-label={t.modal.close}><X size={14} /></button>} />
+          action={<button type="button" onClick={onClose} className="btn px-2 py-1.5" aria-label={t.modal.close}><X size={14} /></button>} />
         <div className="overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
             <Field label={t.modal.name}><input autoFocus className={inputCls} maxLength={60} placeholder="SET50 Index Fund" value={f.name} onChange={e => setF({ ...f, name: e.target.value })} /></Field>

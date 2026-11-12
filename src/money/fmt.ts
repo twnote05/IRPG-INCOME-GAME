@@ -12,9 +12,7 @@ const MON = { th: TH_MON, en: EN_MON }
 export const monthLabel = (m: string, lang: Lang) => validMonth(m)
   ? `${MON[lang][+m.slice(5, 7) - 1]} ${lang === 'th' ? +m.slice(0, 4) + 543 - 2500 : m.slice(2, 4)}`
   : String(m ?? '—')
-export const monShort = (m: string, lang: Lang) => MON[lang][+m.slice(5, 7) - 1] ?? m
 export const dayLabel = (d: string, lang: Lang) => {
   const [, mo, da] = d.split('-')
   return lang === 'th' ? `${+da} ${TH_MON[+mo - 1]}` : `${EN_MON[+mo - 1]} ${+da}`
 }
-export const yearLabel = (y: string, lang: Lang) => (lang === 'th' ? String(+y + 543) : y)

@@ -19,7 +19,7 @@ export default function CharacterSheet({ game }: { game: Game }) {
 
   return (
     <Panel title={t.sheet.title} icon={User} glow="gold"
-      action={<button onClick={() => setEditing(e => !e)} className="btn px-1.5 py-0.5" aria-label={t.sheet.edit} aria-expanded={editing}><Pencil size={15} /></button>}>
+      action={<button onClick={() => setEditing(e => !e)} className="btn px-2 py-1.5" aria-label={t.sheet.edit} aria-expanded={editing}><Pencil size={15} /></button>}>
       <div className="flex items-center gap-3">
         <motion.div whileHover={{ scale: 1.05 }}
           className={`grid h-24 w-16 shrink-0 place-items-center ${frameCls(s.frame)}`}>

@@ -169,7 +169,7 @@ function FuelCalc({ money, t, fuel }: { money: Money; t: Dict; fuel: FuelT }) {
   ]
   return (
     <Panel title={t.money.fuel} icon={Fuel} glow="gold"
-      action={<button className="btn px-2 py-0.5 text-xs" onClick={() => setOpen(o => !o)} aria-expanded={open}>{open ? '−' : '+'}</button>}>
+      action={<button className="btn px-2.5 py-1.5 text-xs" onClick={() => setOpen(o => !o)} aria-expanded={open}>{open ? '−' : '+'}</button>}>
       {!open ? <p className="text-xs text-slate-500">{t.money.fuelHint}</p> : (
         <>
           {rows.map(([k, label, unit]) => (

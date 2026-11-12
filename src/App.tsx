@@ -32,8 +32,9 @@ const INVEST_TABS = [
   { id: 'map', icon: 'map' }, { id: 'quests', icon: 'scroll' }, { id: 'items', icon: 'chest' },
 ] as const
 const WORLD_ICON = { money: 'pouch', invest: 'sword' } as const
+// Settings lives behind the gear inside the ledger, so the taskbar keeps four roomy buttons.
 const MONEY_NAV = [
-  { id: 'log', icon: 'book' }, { id: 'adv', icon: 'sword' }, { id: 'plan', icon: 'map' }, { id: 'sum', icon: 'chart' }, { id: 'set', icon: 'gear' },
+  { id: 'log', icon: 'book' }, { id: 'adv', icon: 'sword' }, { id: 'plan', icon: 'map' }, { id: 'sum', icon: 'chart' },
 ] as const
 
 export default function App() {

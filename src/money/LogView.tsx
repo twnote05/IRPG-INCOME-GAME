@@ -76,12 +76,12 @@ export default function LogView({ money, t, lang }: { money: Money; t: Dict; lan
             {items.map(e => (
               <li key={e.id} className="flex items-center gap-2 py-1.5">
                 <span className="min-w-0 flex-1 truncate text-sm text-slate-100">{e.note}</span>
-                <select className="field w-28 shrink-0 !py-1 !text-xs sm:w-40" value={envs.includes(e.env) ? e.env : OTHER}
+                <select className="field -my-2 w-28 shrink-0 !py-3 !text-xs sm:w-40" value={envs.includes(e.env) ? e.env : OTHER}
                   onChange={ev => money.setEnv(e.id, ev.target.value)} aria-label={t.money.envelope}>
                   {!envs.includes(e.env) && <option value={OTHER}>{e.env}</option>}
                   {envs.map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
-                <button className={`w-20 shrink-0 px-1 text-right font-mono text-sm font-bold ${e.type === 'in' ? 'text-emerald-700' : 'text-red-700'}`}
+                <button className={`-my-3 w-20 shrink-0 px-1 py-3 text-right font-mono text-sm font-bold ${e.type === 'in' ? 'text-emerald-700' : 'text-red-700'}`}
                   aria-label={t.money.editAmount(e.note)}
                   onClick={() => {
                     const v = prompt(t.money.editPrompt(e.note), String(e.amount))
@@ -89,8 +89,8 @@ export default function LogView({ money, t, lang }: { money: Money; t: Dict; lan
                   }}>
                   {e.type === 'in' ? '+' : '−'}{fmt0(e.amount)}
                 </button>
-                <button className="shrink-0 p-1 text-slate-500 hover:text-red-700" aria-label={t.money.del}
-                  onClick={() => confirm(t.money.delConfirm(e.note)) && money.delEntry(e.id)}><X size={16} /></button>
+                <button className="-my-2 -mr-2 shrink-0 p-[13px] text-slate-500 hover:text-red-700" aria-label={t.money.del}
+                  onClick={() => money.delEntry(e.id)}><X size={18} /></button>
               </li>
             ))}
           </ul>

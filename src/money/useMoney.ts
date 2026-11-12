@@ -149,6 +149,23 @@ export function useMoney() {
     markDirty()
   }
 
+  // Deleting is one tap and comes back with one tap — a confirm dialog on every row costs more
+  // than the rare mistake it prevents.
+  const [undo, setUndo] = useState<{ db: MoneyDb; label: string } | null>(null)
+  const undoTimer = useRef<number | undefined>(undefined)
+  const snapshot = (label: string) => {
+    setUndo({ db: dbRef.current, label })
+    clearTimeout(undoTimer.current)
+    undoTimer.current = window.setTimeout(() => setUndo(null), 8000)
+  }
+  const undoDelete = () => {
+    if (!undo) return
+    clearTimeout(undoTimer.current)
+    setDb(undo.db)
+    setUndo(null)
+    markDirty()
+  }
+
   const month = db.months[cur]
   const planNames = useMemo(() => (month?.plan ?? []).map(p => p.name).filter(Boolean), [month])
 
@@ -168,7 +185,10 @@ export function useMoney() {
     if (note && env !== OTHER) setLearned(l => ({ ...l, [norm(note)]: env }))
   }
   const setAmount = (id: string, amount: number) => mutate(d => { const e = d.entries.find(x => x.id === id); if (e && amount > 0) e.amount = amount })
-  const delEntry = (id: string) => mutate(d => { d.entries = d.entries.filter(e => e.id !== id) })
+  const delEntry = (id: string) => {
+    snapshot(db.entries.find(e => e.id === id)?.note ?? '')
+    mutate(d => { d.entries = d.entries.filter(e => e.id !== id) })
+  }
 
   // ---------- plan ----------
   const updateRow = (kind: PlanKind, id: string, patch: Partial<Row & Bucket>) => mutate((_, m) => {
@@ -181,9 +201,12 @@ export function useMoney() {
     if (kind === 'buckets') m.buckets.push({ id: uid(), name: '', pct: 0 })
     else m[kind].push({ id: uid(), name: '', amount: 0 })
   })
-  const delRow = (kind: PlanKind, id: string) => mutate((_, m) => {
-    (m[kind] as { id: string }[]).splice((m[kind] as { id: string }[]).findIndex(r => r.id === id), 1)
-  })
+  const delRow = (kind: PlanKind, id: string) => {
+    snapshot(((month?.[kind] ?? []) as { id: string; name?: string }[]).find(r => r.id === id)?.name ?? '')
+    mutate((_, m) => {
+      (m[kind] as { id: string }[]).splice((m[kind] as { id: string }[]).findIndex(r => r.id === id), 1)
+    })
+  }
   const addDebt = () => mutate((_, m) => { m.plan.push({ id: uid(), name: '', amount: 0, total: 0, n: 0, of: 12 }) })
   const carry = () => {
     const src = db.months[prevMonth(cur)]
@@ -231,7 +254,7 @@ export function useMoney() {
   return {
     db, cur, setCur, months, month, planNames, learned, summary, goals, goalList, saved, setGoal, rest, restToday, payday, setPayday,
     gas, sync, connect, disconnect, syncNow: () => (read(K.dirty, null) && canPush() ? pushUp() : pullDown()),
-    addQuick, setEnv, setAmount, delEntry,
+    addQuick, setEnv, setAmount, delEntry, undo, undoDelete,
     updateRow, addRow, delRow, addDebt, carry, setFuel, applyFuel,
     exportJson, exportCsv, importJson, unlearn, clearLearned, evalAmount,
   }

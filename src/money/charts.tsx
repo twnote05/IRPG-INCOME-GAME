@@ -34,33 +34,6 @@ export function BarsH({ rows, max, empty }: { rows: HRow[]; max?: number; empty:
   )
 }
 
-export interface VRow { label: string; value: number; now?: boolean; planOnly?: boolean }
-
-/** Vertical bars. With many bars (31 days / 12 months) only the tallest and the current one get a number. */
-export function BarsV({ rows, empty }: { rows: VRow[]; empty: string }) {
-  if (!rows.length) return <p className="py-6 text-center text-sm text-slate-500">{empty}</p>
-  const top = Math.max(...rows.map(r => r.value), 1)
-  const dense = rows.length > 8
-  return (
-    <div>
-      <div className={`flex h-36 items-end pt-5 ${dense ? 'gap-0.5' : 'gap-1.5'}`}>
-        {rows.map((r, i) => (
-          <div key={i} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1">
-            <span className="text-[9px] whitespace-nowrap text-slate-500">{r.value && (!dense || r.value === top || r.now) ? fmt0(r.value) : ''}</span>
-            {r.value ? (
-              <i className={`block w-full border border-[#0a0c24] ${r.planOnly ? 'bg-[repeating-linear-gradient(135deg,var(--color-blue-600)_0_3px,transparent_3px_6px)]' : `bg-blue-600 ${PX}`} ${r.now ? 'outline-2 outline-offset-1 outline-amber-500' : ''}`}
-                style={{ height: `${Math.max(4, r.value / top * 100)}%` }} />
-            ) : <i className="block w-full border-t-2 border-dashed border-slate-700" />}
-          </div>
-        ))}
-      </div>
-      <div className={`mt-1 flex ${dense ? 'gap-0.5' : 'gap-1.5'}`}>
-        {rows.map((r, i) => <div key={i} className="min-w-0 flex-1 text-center text-[10px] whitespace-nowrap text-slate-500">{r.label}</div>)}
-      </div>
-    </div>
-  )
-}
-
 /** Donut drawn on a pixel grid: stepped edges, dark outline, outline-colored seams between slices. */
 export function PixelRing({ slices, center, label, size = 'size-44' }: {
   slices: { label: string; value: number; color: string }[]; center?: ReactNode; label: string; size?: string

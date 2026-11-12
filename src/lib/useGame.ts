@@ -88,7 +88,7 @@ export function useGame(money?: MoneySummary & { rewards?: Reward[] }, gas: GasC
 
   const toast = useCallback((text: string, tone: Tone = 'gold') => {
     const id = uid()
-    setToasts(t => [...t, { id, text, tone }])
+    setToasts(t => [...t, { id, text, tone }].slice(-3)) // a phone screen full of toasts hides the app
     setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 2800)
   }, [])
 

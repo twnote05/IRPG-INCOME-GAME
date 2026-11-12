@@ -51,8 +51,8 @@ export default function CalendarView({ money, t }: { money: Money; t: Dict }) {
     <div className={full ? 'fixed inset-0 z-50 overflow-y-auto bg-black/70 p-4' : ''} onClick={full ? () => setFull(false) : undefined}>
     <div className={full ? 'mx-auto max-w-xl' : ''} onClick={e => e.stopPropagation()}>
     <Panel title={t.cal.title} icon={CalendarDays} glow="gold" action={<>
-      {!full && <button className="btn px-2 py-0.5 text-xs" onClick={() => setOpen(o => !o)} aria-expanded={open}>{open ? '−' : '+'}</button>}
-      <button className="btn px-1.5 py-0.5" onClick={() => setFull(!full)} aria-label={full ? t.cal.collapse : t.cal.expand} title={full ? t.cal.collapse : t.cal.expand}>
+      {!full && <button className="btn px-2.5 py-1.5 text-xs" onClick={() => setOpen(o => !o)} aria-expanded={open}>{open ? '−' : '+'}</button>}
+      <button className="btn px-2 py-1.5" onClick={() => setFull(!full)} aria-label={full ? t.cal.collapse : t.cal.expand} title={full ? t.cal.collapse : t.cal.expand}>
         {full ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
       </button>
     </>}>
