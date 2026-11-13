@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {
   alloc, budgetState, byAccount, carryMonth, dailyBudget, daysInMonth, evalAmount, fuelCost, guessEnv,
   looksLikeToken, mergeBackup, mergeIntoRemote, nextMonth, nextPeriod, parseQuick, payoffMonth, periodN, pieData,
-  prevMonth, spendable, paidNames, isPaid, paidEntryId, sum, bucketTotals, goalProgress, validGasUrl, validMonth, vsPlan, yearMonths, dayLog, weekStart, addDays, type MoneyDb,
+  prevMonth, spendable, paidNames, isPaid, paidEntryId, sum, bucketTotals, goalProgress, validGasUrl, validMonth, vsPlan, yearMonths, dayLog, weekStart, addDays, weekDays, monthTotals, envTotals, dayTotals, type MoneyDb,
 } from './logic.ts'
 
 const eq = (a: unknown, b: unknown, m: string) => assert.deepEqual(a, b, m)
@@ -236,5 +236,24 @@ eq(paidEntryId(PD, '2026-10', 'ค่าบ้าน'), 'e3', 'asking about Octo
 eq(paidEntryId({ months: PD.months, entries: [PD.entries[0]] }, '2026-10', 'ค่าบ้าน'), null, 'a later month match does not count')
 ok(!isPaid({ id: 'x', name: ' ', amount: 1 }, new Set([''])), 'isPaid rejects a blank name itself')
 eq(paidEntryId(PD, '2026-11', ' '), null, 'blank name has nothing to undo')
+
+// --- summary data ---
+const SUM: MoneyDb = { months: {}, entries: [
+  { id: 'w1', date: '2026-11-09', type: 'out', env: 'อาหาร', note: 'a', amount: 100 }, // Monday
+  { id: 'w2', date: '2026-11-12', type: 'out', env: 'อาหาร', note: 'b', amount: 50 },
+  { id: 'w3', date: '2026-11-12', type: 'out', env: 'น้ำมัน', note: 'c', amount: 700 },
+  { id: 'w4', date: '2026-11-15', type: 'in', env: 'รายรับ', note: 'd', amount: 9000 },
+  { id: 'y1', date: '2026-03-02', type: 'out', env: 'อาหาร', note: 'e', amount: 400 },
+] }
+eq(weekDays(SUM, '2026-11-12').length, 7, 'seven days')
+eq(weekDays(SUM, '2026-11-12')[0].date, '2026-11-09', 'starts Monday')
+eq(weekDays(SUM, '2026-11-12')[3].total, 750, 'Thursday adds up')
+eq(sum(weekDays(SUM, '2026-11-12'), d => d.total), 850, 'income is not spending')
+eq(monthTotals(SUM, '2026').length, 12, 'twelve months')
+eq(monthTotals(SUM, '2026')[2].total, 400, 'March')
+eq(monthTotals(SUM, '2026')[0].total, 0, 'an empty month is zero, not missing')
+eq(envTotals(SUM, '2026-11')[0], { label: 'น้ำมัน', value: 700 }, 'biggest first')
+eq(envTotals(SUM, '2026-11').at(-1)!.label, 'อาหาร', 'smallest last')
+eq(dayTotals(SUM, '2026-11')['2026-11-12'], 750, 'per-day total')
 
 console.log('money.check: all good')

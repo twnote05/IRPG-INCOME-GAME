@@ -325,3 +325,31 @@ export const validRest = (db: MoneyDb, rest: string[]) => {
   const spent = new Set(db.entries.filter(e => e.type === 'out').map(e => e.date))
   return rest.filter(d => !spent.has(d))
 }
+
+// ---------- summary data (spending only: type === 'out') ----------
+const outs = (db: MoneyDb) => db.entries.filter(e => e.type === 'out')
+/** Mon..Sun of the week containing `today`, spent per day. */
+export const weekDays = (db: MoneyDb, today: string) => {
+  const o = outs(db)
+  return Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(weekStart(today), i)
+    return { date, total: sum(o.filter(e => e.date === date)) }
+  })
+}
+/** Jan..Dec of `year`, spent per month (0 when empty). */
+export const monthTotals = (db: MoneyDb, year: string) => {
+  const o = outs(db)
+  return yearMonths(year).map(month => ({ month, total: sum(o.filter(e => monthOf(e) === month)) }))
+}
+/** Spent per envelope in a month, biggest first. */
+export function envTotals(db: MoneyDb, month: string) {
+  const g: Record<string, number> = {}
+  for (const e of outs(db)) if (monthOf(e) === month) g[e.env] = (g[e.env] || 0) + (+e.amount || 0)
+  return Object.entries(g).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value)
+}
+/** ISO date -> spent, for one month. */
+export function dayTotals(db: MoneyDb, month: string) {
+  const g: Record<string, number> = {}
+  for (const e of outs(db)) if (monthOf(e) === month) g[e.date] = (g[e.date] || 0) + (+e.amount || 0)
+  return g
+}
