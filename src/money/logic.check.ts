@@ -227,13 +227,16 @@ const BL: MoneyDb = {
   ],
 }
 eq(paidNames(BL, '2026-11').size, 0, 'a blank plan row never enters paidNames')
-// paidEntryId: newest date wins; on a date tie the later-logged entry wins
+// paidEntryId: newest date wins; entries are stored newest-first, so on a date tie the first in array order (logged last) wins
 const NW: MoneyDb = { months: PD.months, entries: [
+  { id: 'n3', date: '2026-11-05', type: 'out', env: 'x', note: 'ค่าบ้าน', amount: 1 },
   { id: 'n1', date: '2026-11-05', type: 'out', env: 'x', note: 'ค่าบ้าน', amount: 1 },
   { id: 'n2', date: '2026-11-02', type: 'out', env: 'x', note: 'ค่าบ้าน', amount: 1 },
-  { id: 'n3', date: '2026-11-05', type: 'out', env: 'x', note: 'ค่าบ้าน', amount: 1 },
 ] }
-eq(paidEntryId(NW, '2026-11', 'ค่าบ้าน'), 'n3', 'newest date, tie -> later logged')
+eq(paidEntryId(NW, '2026-11', 'ค่าบ้าน'), 'n3', 'newest date, tie -> first in newest-first order')
+eq(paidEntryId(PD, '2026-10', 'ค่าบ้าน'), 'e3', 'asking about October returns October entry, not November')
+eq(paidEntryId({ months: PD.months, entries: [PD.entries[0]] }, '2026-10', 'ค่าบ้าน'), null, 'a later month match does not count')
+ok(!isPaid({ id: 'x', name: ' ', amount: 1 }, new Set([''])), 'isPaid rejects a blank name itself')
 eq(paidEntryId(PD, '2026-11', ' '), null, 'blank name has nothing to undo')
 
 console.log('money.check: all good')

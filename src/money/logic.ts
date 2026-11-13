@@ -148,12 +148,12 @@ export function paidNames(db: MoneyDb, month: string): Set<string> {
   return paid
 }
 export const isPaid = (row: Row, paid: Set<string>) => !!row.name.trim() && paid.has(norm(row.name))
-/** Newest matching 'out' entry id in the month (by date; a date tie goes to the later-logged one), or null. */
+/** Newest matching 'out' entry id in the month (by date; entries are stored newest-first, so on a date tie the first match in array order is the most recently logged), or null. */
 export function paidEntryId(db: MoneyDb, month: string, name: string): string | null {
   if (!name.trim()) return null
   let best: Entry | null = null
   for (const e of db.entries)
-    if (e.type === 'out' && monthOf(e) === month && norm(e.note) === norm(name) && (!best || e.date >= best.date)) best = e
+    if (e.type === 'out' && monthOf(e) === month && norm(e.note) === norm(name) && (!best || e.date > best.date)) best = e
   return best ? best.id : null
 }
 
