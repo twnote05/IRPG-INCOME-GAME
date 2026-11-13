@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {
   alloc, budgetState, byAccount, carryMonth, dailyBudget, dateInMonth, daysInMonth, evalAmount, fuelCost, guessEnv,
   looksLikeToken, mergeBackup, mergeIntoRemote, nextMonth, nextPeriod, parseQuick, payoffMonth, periodN, pieData,
-  prevMonth, spendable, paidNames, sum, bucketTotals, goalProgress, validGasUrl, validMonth, vsPlan, yearMonths, dayLog, weekStart, addDays, type MoneyDb,
+  prevMonth, spendable, paidNames, isPaid, paidEntryId, sum, bucketTotals, goalProgress, validGasUrl, validMonth, vsPlan, yearMonths, dayLog, weekStart, addDays, type MoneyDb,
 } from './logic.ts'
 
 const eq = (a: unknown, b: unknown, m: string) => assert.deepEqual(a, b, m)
@@ -194,5 +194,46 @@ const LOGGED: MoneyDb = { months: { '2026-04': { income: [], plan: [], buckets: 
 eq(spendable(LOGGED, '2026-04', '2026-04-10').income, 20000, 'falls back to logged income')
 // paidNames: normalised, amount-irrelevant, blank rows never match
 eq([...paidNames(SP, '2026-11')], ['ค่าบ้าน'], 'only the entry naming a plan row counts')
+
+
+// --- paid detection: note matches the row name, amount ignored ---
+const PD: MoneyDb = {
+  months: { '2026-11': { income: [], buckets: [], plan: [
+    { id: '1', name: 'ค่าบ้าน', amount: 4500 },
+    { id: '2', name: 'อาหาร', amount: 8000 },
+    { id: '3', name: '', amount: 500 },
+  ] } },
+  entries: [
+    { id: 'e1', date: '2026-11-01', type: 'out', env: 'ค่าบ้าน', note: ' ค่าบ้าน ', amount: 4000 },
+    { id: 'e2', date: '2026-11-03', type: 'out', env: 'อาหาร', note: 'ข้าวเที่ยง', amount: 85 },
+    { id: 'e3', date: '2026-10-01', type: 'out', env: 'ค่าบ้าน', note: 'ค่าบ้าน', amount: 4500 },
+  ],
+}
+const paid = paidNames(PD, '2026-11')
+ok(isPaid(PD.months['2026-11'].plan[0], paid), 'paid despite spaces and a smaller amount')
+ok(!isPaid(PD.months['2026-11'].plan[1], paid), 'daily food notes do not pay the food row')
+ok(!isPaid(PD.months['2026-11'].plan[2], paid), 'a blank row is never paid')
+eq(paidEntryId(PD, '2026-11', 'ค่าบ้าน'), 'e1', 'this month only, newest first')
+eq(paidEntryId(PD, '2026-11', 'ไม่มี'), null, 'nothing to undo')
+// two rows sharing a name: both read as paid rather than crashing or picking one
+const TWIN = { id: '4', name: 'ค่าบ้าน', amount: 900 }
+ok(isPaid(TWIN, paid), 'a duplicate name is paid too')
+// blank plan row + empty/blank-note out entries: paidNames itself must stay empty
+const BL: MoneyDb = {
+  months: { '2026-11': { income: [], buckets: [], plan: [{ id: '1', name: ' ', amount: 1 }] } },
+  entries: [
+    { id: 'b1', date: '2026-11-01', type: 'out', env: 'x', note: '', amount: 1 },
+    { id: 'b2', date: '2026-11-02', type: 'out', env: 'x', note: '  ', amount: 1 },
+  ],
+}
+eq(paidNames(BL, '2026-11').size, 0, 'a blank plan row never enters paidNames')
+// paidEntryId: newest date wins; on a date tie the later-logged entry wins
+const NW: MoneyDb = { months: PD.months, entries: [
+  { id: 'n1', date: '2026-11-05', type: 'out', env: 'x', note: 'ค่าบ้าน', amount: 1 },
+  { id: 'n2', date: '2026-11-02', type: 'out', env: 'x', note: 'ค่าบ้าน', amount: 1 },
+  { id: 'n3', date: '2026-11-05', type: 'out', env: 'x', note: 'ค่าบ้าน', amount: 1 },
+] }
+eq(paidEntryId(NW, '2026-11', 'ค่าบ้าน'), 'n3', 'newest date, tie -> later logged')
+eq(paidEntryId(PD, '2026-11', ' '), null, 'blank name has nothing to undo')
 
 console.log('money.check: all good')
