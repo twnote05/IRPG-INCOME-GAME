@@ -22,21 +22,21 @@ export default function PlanView({ money, t, lang }: { money: Money; t: Dict; la
   const named = m.plan.filter(r => r.name.trim())
   const nPaid = named.filter(r => isPaid(r, paidSet)).length
   const unpaidSum = sum(named.filter(r => !isPaid(r, paidSet)))
-  const PayBtn = ({ r }: { r: typeof m.plan[number] }) => {
+  const payBtn = (r: typeof m.plan[number]) => {
     if (!r.name.trim()) return null
     const on = isPaid(r, paidSet)
     return (
-      <button className={`btn flex min-h-11 min-w-11 shrink-0 items-center gap-1 text-xs ${on ? 'btn-pressed' : ''}`} aria-pressed={on}
+      <button className={`btn flex min-h-11 min-w-11 shrink-0 items-center gap-1 text-xs ${on ? 'btn-pressed' : ''}`} aria-pressed={on} aria-label={`${t.money.markPaid}: ${r.name}`}
         onClick={() => (on ? money.unpayRow(r) : money.payRow(r))}>
         {on && <Check size={14} />} {on ? t.money.paidTick : t.money.markPaid}
       </button>
     )
   }
-  const dim = (r: typeof m.plan[number]) => (isPaid(r, paidSet) ? 'opacity-50' : '')
+  const dim = (r: typeof m.plan[number]) => (isPaid(r, paidSet) ? 'text-slate-400 line-through' : '')
 
-  const Del = ({ onClick }: { onClick: () => void }) =>
+  const del = (onClick: () => void) =>
     <button className="shrink-0 p-1 text-slate-500 hover:text-red-700" aria-label={t.money.del} onClick={onClick}><X size={15} /></button>
-  const Add = ({ label, onClick }: { label: string; onClick: () => void }) =>
+  const add = (label: string, onClick: () => void) =>
     <button className="btn mt-2 flex items-center gap-1 text-xs" onClick={onClick}><Plus size={13} /> {label}</button>
 
   return (
@@ -53,10 +53,10 @@ export default function PlanView({ money, t, lang }: { money: Money; t: Dict; la
             <input className={`${inputCls} min-w-0 flex-1`} value={r.name} placeholder={t.money.incomeName}
               onChange={e => money.updateRow('income', r.id, { name: e.target.value })} />
             <div className="w-32 shrink-0"><AmountInput value={r.amount} onCommit={v => money.updateRow('income', r.id, { amount: v ?? 0 })} ariaLabel={t.money.amount} /></div>
-            <Del onClick={() => money.delRow('income', r.id)} />
+            {del(() => money.delRow('income', r.id))}
           </div>
         ))}
-        <Add label={t.money.addIncome} onClick={() => money.addRow('income')} />
+        {add(t.money.addIncome, () => money.addRow('income'))}
       </Panel>
 
       {named.length > 0 && <p className="text-center text-xs text-slate-400" data-testid="tally">{t.money.paidTally(nPaid, named.length, fmt0(unpaidSum))}</p>}
@@ -67,23 +67,23 @@ export default function PlanView({ money, t, lang }: { money: Money; t: Dict; la
           const act = spentIn(r.name)
           return (
             // one grid so name / amount / spent / ✕ share a line; the account note sits under the name
-            <div key={r.id} className={`grid grid-cols-[minmax(0,1fr)_7rem_3.5rem_auto] items-center gap-x-2 border-b border-slate-800 py-1.5 last:border-0 ${dim(r)}`}>
-              <input className={`${inputCls} min-w-0`} value={r.name} placeholder={t.money.itemName}
+            <div key={r.id} className={`grid grid-cols-[minmax(0,1fr)_7rem_3.5rem_auto] items-center gap-x-2 border-b border-slate-800 py-1.5 last:border-0`}>
+              <input className={`${inputCls} min-w-0 ${dim(r)}`} value={r.name} placeholder={t.money.itemName}
                 onChange={e => money.updateRow('plan', r.id, { name: e.target.value })} />
               <div className="min-w-0"><AmountInput value={r.amount} onCommit={v => money.updateRow('plan', r.id, { amount: v ?? 0 })} ariaLabel={t.money.amount} /></div>
               <span className={`text-right font-mono text-xs ${act ? STATE[budgetState(act, r.amount)] : 'text-slate-600'}`} title={t.money.spentSoFar}>
                 {act ? fmt0(act) : '–'}
               </span>
-              <Del onClick={() => money.delRow('plan', r.id)} />
+              {del(() => money.delRow('plan', r.id))}
               <div className="col-span-4 mt-0.5 flex items-center justify-between gap-2">
                 <input className="w-24 min-w-0 bg-transparent px-1 text-[11px] text-slate-500 outline-none placeholder:text-slate-600 focus:text-slate-200"
                   value={r.acct ?? ''} placeholder={t.money.acct} aria-label={t.money.acct} onChange={e => money.updateRow('plan', r.id, { acct: e.target.value || undefined })} />
-                <PayBtn r={r} />
+                {payBtn(r)}
               </div>
             </div>
           )
         })}
-        <Add label={t.money.addItem} onClick={() => money.addRow('plan')} />
+        {add(t.money.addItem, () => money.addRow('plan'))}
       </Panel>
 
       <Panel title={t.money.debts} icon={CalendarRange} glow="gold">
@@ -94,11 +94,11 @@ export default function PlanView({ money, t, lang }: { money: Money; t: Dict; la
             const paid = n * (+r.amount || 0), remain = leftN * (+r.amount || 0), total = +(r.total ?? 0) || 0
             const end = payoffMonth(r, cur)
             return (
-              <div key={r.id} className={`sunken p-2.5 ${dim(r)}`}>
+              <div key={r.id} className={`sunken p-2.5`}>
                 <div className="flex items-center gap-2">
-                  <input className={`${inputCls} min-w-0 flex-1 font-semibold`} value={r.name} placeholder={t.money.debtName}
+                  <input className={`${inputCls} min-w-0 flex-1 font-semibold ${dim(r)}`} value={r.name} placeholder={t.money.debtName}
                     onChange={e => money.updateRow('plan', r.id, { name: e.target.value })} />
-                  <Del onClick={() => money.delRow('plan', r.id)} />
+                  {del(() => money.delRow('plan', r.id))}
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-slate-500 sm:grid-cols-4">
                   <label>{t.money.principal}<AmountInput value={r.total} placeholder="—" onCommit={v => money.updateRow('plan', r.id, { total: v })} /></label>
@@ -115,13 +115,13 @@ export default function PlanView({ money, t, lang }: { money: Money; t: Dict; la
                 <div className="mt-2 flex items-center gap-2">
                   <input className="min-w-0 flex-1 border border-dashed border-slate-700 bg-transparent px-1.5 py-1 text-[11px] text-slate-400 outline-none"
                     value={r.acct ?? ''} placeholder={t.money.acct} onChange={e => money.updateRow('plan', r.id, { acct: e.target.value || undefined })} />
-                  <PayBtn r={r} />
+                  {payBtn(r)}
                 </div>
               </div>
             )
           })}
         </div>
-        <Add label={t.money.addDebt} onClick={money.addDebt} />
+        {add(t.money.addDebt, money.addDebt)}
 
         <div className="mt-3 space-y-1 border-t border-slate-800 pt-2 text-sm">
           <div className="flex justify-between"><span>{t.money.totalPlan}</span><b className="font-mono text-red-700">-{fmt(planned)}</b></div>
@@ -149,7 +149,7 @@ export default function PlanView({ money, t, lang }: { money: Money; t: Dict; la
                   <span className="text-xs text-slate-500">%</span>
                 </div>
                 <span className="w-16 shrink-0 text-right font-mono text-sm font-bold text-slate-100">{fmt0(b.baht)}</span>
-                <Del onClick={() => money.delRow('buckets', b.id)} />
+                {del(() => money.delRow('buckets', b.id))}
               </div>
               {b.name && (
                 <div className="mt-1 flex items-center gap-2 pl-1 text-[11px] text-slate-500">
@@ -161,7 +161,7 @@ export default function PlanView({ money, t, lang }: { money: Money; t: Dict; la
             </div>
           )
         })}
-        <Add label={t.money.addBucket} onClick={() => money.addRow('buckets')} />
+        {add(t.money.addBucket, () => money.addRow('buckets'))}
         <p className={`mt-2 text-xs ${Math.abs(totPct - 1) < 1e-9 ? 'text-emerald-700' : 'text-red-700'}`}>
           {Math.abs(totPct - 1) < 1e-9 ? t.money.pctOk : t.money.pctBad(fmt(totPct * 100), fmt0(left * (1 - totPct)))}
         </p>
