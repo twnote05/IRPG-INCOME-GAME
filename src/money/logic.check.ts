@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {
   alloc, budgetState, byAccount, carryMonth, dailyBudget, dateInMonth, daysInMonth, evalAmount, fuelCost, guessEnv,
   looksLikeToken, mergeBackup, mergeIntoRemote, nextMonth, nextPeriod, parseQuick, payoffMonth, periodN, pieData,
-  prevMonth, sum, bucketTotals, goalProgress, validGasUrl, validMonth, vsPlan, yearMonths, dayLog, weekStart, addDays, type MoneyDb,
+  prevMonth, spendable, paidNames, sum, bucketTotals, goalProgress, validGasUrl, validMonth, vsPlan, yearMonths, dayLog, weekStart, addDays, type MoneyDb,
 } from './logic.ts'
 
 const eq = (a: unknown, b: unknown, m: string) => assert.deepEqual(a, b, m)
@@ -168,5 +168,31 @@ eq(dl[1].active, false, 'nothing logged on day 2')
 eq(weekStart('2026-09-28'), '2026-09-28', 'Mon 28 Sep is its own week start')
 eq(weekStart('2026-10-04'), '2026-09-28', 'Sunday belongs to the week before')
 eq(addDays('2026-09-28', 5), '2026-10-03', 'addDays across month end')
+
+// --- spendable: bills are set aside for the whole month, paid or not ---
+const SP: MoneyDb = {
+  months: { '2026-11': { income: [{ id: 'i', name: 'เงินเดือน', amount: 30000 }],
+    plan: [{ id: 'p', name: 'ค่าบ้าน', amount: 22000 }], buckets: [] } },
+  entries: [
+    { id: 'a', date: '2026-11-02', type: 'out', env: 'ค่าบ้าน', note: 'ค่าบ้าน', amount: 22000 },
+    { id: 'b', date: '2026-11-05', type: 'out', env: 'อาหาร', note: 'ข้าวเที่ยง', amount: 3200 },
+  ],
+}
+eq(spendable(SP, '2026-11', '2026-11-12').discretionary, 3200, 'the paid bill is not discretionary')
+eq(spendable(SP, '2026-11', '2026-11-12').left, 4800, '30000 − 22000 − 3200')
+eq(spendable(SP, '2026-11', '2026-11-12').daysLeft, 19, '12..30 inclusive')
+eq(spendable(SP, '2026-11', '2026-11-30').daysLeft, 1, 'last day still divides by 1')
+eq(spendable(SP, '2026-11', '2026-10-15').daysLeft, 30, 'another month divides by the whole month')
+ok(spendable(SP, '2026-11', '2026-11-12').perDay > 252, 'about 253 a day')
+// no plan at all (several of the imported months)
+const BARE: MoneyDb = { months: {}, entries: [{ id: 'c', date: '2026-03-04', type: 'out', env: 'อื่นๆ', note: 'x', amount: 100 }] }
+eq(spendable(BARE, '2026-03', '2026-03-10').hasPlan, false, 'no plan flagged')
+eq(spendable(BARE, '2026-03', '2026-03-10').perDay, 0, 'never a negative or infinite per-day')
+// income falls back to logged income when the month has no income row
+const LOGGED: MoneyDb = { months: { '2026-04': { income: [], plan: [], buckets: [] } },
+  entries: [{ id: 'd', date: '2026-04-01', type: 'in', env: 'รายรับ', note: 'เงินเดือน', amount: 20000 }] }
+eq(spendable(LOGGED, '2026-04', '2026-04-10').income, 20000, 'falls back to logged income')
+// paidNames: normalised, amount-irrelevant, blank rows never match
+eq([...paidNames(SP, '2026-11')], ['ค่าบ้าน'], 'only the entry naming a plan row counts')
 
 console.log('money.check: all good')

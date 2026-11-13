@@ -136,6 +136,45 @@ export function budgetState(actual: number, planned: number): BudgetState {
   const r = actual / planned
   return r > 1 ? 'over' : r >= WARN_AT ? 'warn' : 'ok'
 }
+/** Normalised notes of the month's 'out' entries that name a plan row (amount irrelevant; blank rows never match). */
+export function paidNames(db: MoneyDb, month: string): Set<string> {
+  const names = new Set((db.months[month]?.plan ?? []).filter(r => r.name.trim()).map(r => norm(r.name)))
+  const paid = new Set<string>()
+  for (const e of db.entries) {
+    if (e.type !== 'out' || monthOf(e) !== month) continue
+    const n = norm(e.note)
+    if (names.has(n)) paid.add(n)
+  }
+  return paid
+}
+
+export interface Spendable {
+  hasPlan: boolean
+  income: number
+  committed: number
+  discretionary: number
+  left: number
+  daysLeft: number
+  perDay: number
+}
+export function spendable(db: MoneyDb, month: string, today: string): Spendable {
+  const m = db.months[month]
+  const ins = m?.income ?? []
+  const inMonth = db.entries.filter(e => monthOf(e) === month)
+  const income = ins.length ? sum(ins) : sum(inMonth.filter(e => e.type === 'in'))
+  const committed = sum(m?.plan ?? [])
+  const paid = paidNames(db, month)
+  const discretionary = sum(inMonth.filter(e => e.type === 'out' && !paid.has(norm(e.note))))
+  const left = income - committed - discretionary
+  const dim = daysInMonth(month)
+  const daysLeft = today.slice(0, 7) === month ? Math.max(1, dim - +today.slice(8, 10) + 1) : dim
+  return {
+    hasPlan: ins.length > 0 || (m?.plan.length ?? 0) > 0,
+    income, committed, discretionary, left, daysLeft,
+    perDay: left > 0 ? left / daysLeft : 0,
+  }
+}
+
 /** Unspent plan ÷ days left in the month (today included). Other months divide by the whole month. */
 export function dailyBudget(planned: number, spent: number, month: string, today: string) {
   const days = daysInMonth(month)
