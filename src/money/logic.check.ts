@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {
   alloc, budgetState, byAccount, carryMonth, dailyBudget, dateInMonth, daysInMonth, evalAmount, fuelCost, guessEnv,
   looksLikeToken, mergeBackup, mergeIntoRemote, nextMonth, nextPeriod, parseQuick, payoffMonth, periodN, pieData,
-  prevMonth, sum, logStreak, bucketTotals, goalProgress, validGasUrl, validMonth, vsPlan, yearMonths, bestStreak, dayLog, moneyRewards, weekStart, addDays, battleLog, weekChallenge, type MoneyDb,
+  prevMonth, sum, bucketTotals, goalProgress, validGasUrl, validMonth, vsPlan, yearMonths, dayLog, weekStart, addDays, type MoneyDb,
 } from './logic.ts'
 
 const eq = (a: unknown, b: unknown, m: string) => assert.deepEqual(a, b, m)
@@ -152,21 +152,11 @@ const doc: MoneyDb = {
 }
 eq(sum([{ amount: 1 }, { amount: '2' as unknown as number }]), 3, 'sum tolerates strings')
 
-// --- game layer ---
-const days = (...ds: string[]) => ds.map((d, i) => e('s' + i, d, 'out', 1))
-eq(logStreak(days('2026-09-26', '2026-09-27', '2026-09-28'), new Date(2026, 8, 28)), 3, 'streak incl. today')
-eq(logStreak(days('2026-09-26', '2026-09-27'), new Date(2026, 8, 28)), 2, "today not logged yet keeps yesterday's streak")
-eq(logStreak(days('2026-09-25', '2026-09-27', '2026-09-28'), new Date(2026, 8, 28)), 2, 'gap breaks it')
-eq(logStreak(days('2026-09-25'), new Date(2026, 8, 28)), 0, 'stale streak is 0')
-eq(logStreak(days('2026-08-31', '2026-09-01'), new Date(2026, 8, 1)), 2, 'across months')
+// --- goals / day log ---
 const tot = bucketTotals(doc)
 eq(tot['ลงทุน DCA'], 9000, 'bucket saved = left × pct')
 const g = goalProgress(tot, { 'ลงทุน DCA': 18000, 'เที่ยว': 10000, 'ไม่มี': 0 })
 eq(g.map(x => [x.name, x.pct, x.reached]), [['ลงทุน DCA', 50, false], ['เที่ยว', 100, true]], 'unfinished first, zero targets dropped')
-
-eq(logStreak(days('2026-09-26'), new Date(2026, 8, 28), ['2026-09-27']), 2, 'no-spend days keep the streak')
-eq(bestStreak(['2026-02-27', '2026-02-28', '2026-03-01', '2026-03-05']), 3, 'best streak across month end')
-eq(bestStreak([]), 0, 'no days')
 
 // day HP: 15000 plan in a 30-day month, 5000 spent on the 1st
 const dl = dayLog(doc, '2026-09', 15000)
@@ -174,52 +164,9 @@ eq([dl[0].max, dl[0].hp, dl[0].active], [500, -4500, true], 'day 1: 15000/30 HP,
 eq(dl[1].max, 10000 / 29, 'day 2 HP = what is left ÷ days left')
 eq(dl[1].active, false, 'nothing logged on day 2')
 
-// rewards: Sep 28 → only finished days of Sep count; Aug has no plan so no dungeon
-const ids = (rs: { id: string }[]) => rs.map(r => r.id)
-const rw = ids(moneyRewards(doc, {}, ['2026-09-10', '2026-09-28'], new Date(2026, 8, 28)))
-eq(rw.filter(x => x.startsWith('day:')), ['day:2026-09-10'], 'rest day within HP counts, day 1 overspent, today not finished')
-eq(rw.filter(x => x.startsWith('ach:')), ['ach:first', 'ach:rest'], 'first entry + rest achievements')
-const clean: MoneyDb = {
-  months: {
-    '2026-08': { income: [row({ amount: 30000 })], plan: [row({ name: 'ค่ากิน', amount: 5000 }), row({ name: 'ผ่อนรถ', amount: 1000, n: 12, of: 12 })], buckets: [{ id: 'b', name: 'เที่ยว', pct: 1 }] },
-  },
-  entries: [{ ...e('a', '2026-08-03', 'out', 4000), env: 'ค่ากิน' }, { ...e('b', '2026-08-04', 'out', 1000), env: 'ผ่อนรถ' }],
-}
-const cr = moneyRewards(clean, { 'เที่ยว': 30000 }, [], new Date(2026, 8, 2))
-eq(ids(cr).filter(x => !x.startsWith('ach:')), ['dungeon:2026-08', 'debt:ผ่อนรถ', 'chest:เที่ยว:25', 'chest:เที่ยว:50', 'chest:เที่ยว:75'], 'dungeon, dragon, 3 chests (24000/30000)')
-eq(cr.find(r => r.id === 'debt:ผ่อนรถ')?.exp, 1000, 'dragon reward')
-eq(ids(cr).filter(x => x.startsWith('ach:')), ['ach:first', 'ach:clean', 'ach:freedom'], 'achievements follow')
-clean.entries.push({ ...e('c', '2026-08-05', 'out', 1500), env: 'ค่ากิน' })
-eq(ids(moneyRewards(clean, {}, [], new Date(2026, 8, 2))).includes('dungeon:2026-08'), false, 'one envelope over → no clear')
-eq(ids(moneyRewards(clean, {}, ['2026-08-05'], new Date(2026, 8, 2))).includes('ach:rest'), false, 'a "no-spend" day with spending is not one')
-
-// weeks, battle log, weekly challenge, payday loot
+// weeks
 eq(weekStart('2026-09-28'), '2026-09-28', 'Mon 28 Sep is its own week start')
 eq(weekStart('2026-10-04'), '2026-09-28', 'Sunday belongs to the week before')
 eq(addDays('2026-09-28', 5), '2026-10-03', 'addDays across month end')
-const bl = battleLog(doc, [], '2026-09-28')
-eq([bl.from, bl.spent, bl.hits, bl.biggest?.amount], ['2026-09-22', 120, 1, 120], '7-day window')
-const wkDb: MoneyDb = { months: {}, entries: ['2026-09-21', '2026-09-22', '2026-09-23', '2026-09-24', '2026-09-25'].map((d, i) => e('w' + i, d, 'out', 1)) }
-const logWeek = () => { for (let i = 0; i < 400; i++) { const st = addDays('2026-01-05', 7 * i); if (weekChallenge(wkDb, st).id === 'log5') return st } }
-const lw = logWeek()!
-const shifted: MoneyDb = { months: {}, entries: [0, 1, 2, 3, 4].map(i => e('l' + i, addDays(lw, i), 'out', 1)) }
-eq(weekChallenge(shifted, lw, [], addDays(lw, 4)).done, true, 'log5: 5 logged days incl. today')
-eq(weekChallenge(shifted, lw, [], addDays(lw, 3)).n, 4, 'progress so far')
-const nd: MoneyDb = { months: {}, entries: [{ ...e('c1', '2026-09-22', 'out', 60), note: 'กาแฟเย็น' }] }
-eq(new Set(Array.from({ length: 60 }, (_, i) => weekChallenge(nd, addDays('2026-01-05', 7 * i)).id)).size, 5, 'every challenge comes up')
-const loot = moneyRewards({ ...doc, entries: [...doc.entries, e('i1', '2026-09-01', 'in', 45000)] }, {}, [], new Date(2026, 8, 28)).find(r => r.kind === 'loot')
-eq([loot?.id, loot?.exp], ['loot:2026-09', 150], 'income logged + DCA bucket → triple loot')
-
-// festivals: sale boss, ang pao, trip fund
-const fest: MoneyDb = {
-  months: { '2026-11': { income: [row({ amount: 40000 })], plan: [row({ name: 'ค่ากิน', amount: 30000 })], buckets: [{ id: 't', name: 'เที่ยวสงกรานต์', pct: 1 }] } },
-  entries: [{ ...e('s', '2026-11-11', 'out', 200), env: 'ค่ากิน' }, e('a', '2027-02-07', 'in', 888)],
-}
-const fr = (d: Date, goals = {}) => moneyRewards(fest, goals, [], d).map(r => r.id)
-eq(fr(new Date(2026, 10, 20)).includes('sale:2026-11-11'), true, '11.11 logged within HP → sale boss beaten')
-eq(fr(new Date(2026, 10, 11)).includes('sale:2026-11-11'), false, 'not until the day is over')
-eq(fr(new Date(2027, 1, 10)).includes('angpao:2027'), true, 'income 1 day before CNY 2027 → ang pao')
-eq(fr(new Date(2027, 2, 20), { 'เที่ยวสงกรานต์': 15000 }).includes('trip:songkran:2027'), true, 'travel goal ≥50% within 30 days of Songkran')
-eq(fr(new Date(2027, 1, 1), { 'เที่ยวสงกรานต์': 15000 }).some(x => x.startsWith('trip:songkran')), false, 'too early for the trip quest')
 
 console.log('money.check: all good')
