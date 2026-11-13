@@ -140,7 +140,7 @@ const en = {
   cal: {
     title: 'Calendar',
     days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    legend: { good: 'Within budget', over: 'Over budget', rest: 'No-spend', none: 'Not logged' } as Record<string, string>,
+    legend: { under: 'Within daily figure', over: 'Over daily figure' } as Record<string, string>,
     names: {
       newyear: "New Year's Day", cny: 'Chinese New Year', valentine: "Valentine's Day", songkran: 'Songkran', mother: "Mother's Day",
       loykrathong: 'Loy Krathong', father: "Father's Day", christmas: 'Christmas', nye: "New Year's Eve",
@@ -300,7 +300,7 @@ const th: Dict = {
   cal: {
     title: 'ปฏิทิน',
     days: ['จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส', 'อา'],
-    legend: { good: 'ไม่เกินงบ', over: 'เกินงบ', rest: 'ไม่ใช้เงิน', none: 'ไม่ได้จด' },
+    legend: { under: 'ไม่เกินยอดต่อวัน', over: 'เกินยอดต่อวัน' },
     names: {
       newyear: 'วันขึ้นปีใหม่', cny: 'ตรุษจีน', valentine: 'วาเลนไทน์', songkran: 'สงกรานต์', mother: 'วันแม่',
       loykrathong: 'ลอยกระทง', father: 'วันพ่อ', christmas: 'คริสต์มาส', nye: 'วันสิ้นปี',

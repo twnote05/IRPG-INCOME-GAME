@@ -280,29 +280,6 @@ export function goalProgress(totals: Record<string, number>, goals: Record<strin
   }).sort((a, b) => Number(a.reached) - Number(b.reached) || b.pct - a.pct)
 }
 
-/**
- * Each day of a month as a fight: the day's HP is the unspent plan ÷ days left (today included),
- * and spending that day is damage. `active` = something was logged, or the day was marked no-spend.
- */
-export function dayLog(db: MoneyDb, m: string, planned: number, rest: string[] = []) {
-  const out: Record<string, number> = {}
-  const active = new Set(rest.filter(d => d.startsWith(m)))
-  for (const e of db.entries) {
-    if (!e.date.startsWith(m)) continue
-    active.add(e.date)
-    if (e.type === 'out') out[e.date] = (out[e.date] || 0) + (+e.amount || 0)
-  }
-  const days = daysInMonth(m)
-  let before = 0
-  return Array.from({ length: days }, (_, i) => {
-    const date = `${m}-${String(i + 1).padStart(2, '0')}`
-    const max = Math.max(0, planned - before) / (days - i)
-    const spent = out[date] || 0
-    before += spent
-    return { date, max, spent, hp: max - spent, active: active.has(date) }
-  })
-}
-
 // ---------- weeks ----------
 export const addDays = (iso: string, n: number) => {
   const [y, m, d] = iso.split('-').map(Number)
@@ -313,12 +290,6 @@ export const weekStart = (iso: string) => {
   const [y, m, d] = iso.split('-').map(Number)
   return addDays(iso, -((new Date(y, m - 1, d).getDay() + 6) % 7))
 }
-/** "No-spend" days only count while they really have no spending. */
-export const validRest = (db: MoneyDb, rest: string[]) => {
-  const spent = new Set(db.entries.filter(e => e.type === 'out').map(e => e.date))
-  return rest.filter(d => !spent.has(d))
-}
-
 // ---------- summary data (spending only: type === 'out') ----------
 const outs = (db: MoneyDb) => db.entries.filter(e => e.type === 'out')
 /** Mon..Sun of the week containing `today`, spent per day. */

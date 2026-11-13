@@ -13,8 +13,8 @@ const K = {
   dirty: 'investor-rpg:money.dirty',
   learn: 'investor-rpg:money.learn',
   goals: 'investor-rpg:money.goals', // savings targets per bucket name — device-local, like learned envelopes
-  rest: 'investor-rpg:money.rest',
-  payday: 'investor-rpg:money.payday', // day of month or 'last' working day — device-local // days marked "spent nothing" — device-local, never sent to the sheet
+  rest: 'investor-rpg:money.rest', // retired: never read or written, key kept (no key is ever removed)
+  payday: 'investor-rpg:money.payday', // day of month or 'last' working day — device-local
   month: 'investor-rpg:money.month',
   gas: 'investor-rpg:money.gas',
   pulled: 'investor-rpg:money.pulled', // sheet URL this device has pulled from — pushing is only allowed after that
@@ -46,7 +46,6 @@ export function useMoney() {
   const [db, setDb] = useState<MoneyDb>(() => read(K.db, { months: {}, entries: [] }))
   const [learned, setLearned] = useState<Record<string, string>>(() => read(K.learn, {}))
   const [goals, setGoals] = useState<Record<string, number>>(() => read(K.goals, {}))
-  const [rest, setRest] = useState<string[]>(() => read(K.rest, []))
   const [payday, setPayday] = useState<Payday>(() => read(K.payday, 'last' as Payday))
   const [cur, setCur] = useState(() => { const m = read(K.month, ''); return validMonth(m) ? m : thisMonth() })
   const [entryDate, setEntryDateRaw] = useState(() => todayISO()) // not persisted: a fresh launch starts on today
@@ -62,7 +61,6 @@ export function useMoney() {
   useEffect(() => write(K.db, db), [db])
   useEffect(() => write(K.learn, learned), [learned])
   useEffect(() => write(K.goals, goals), [goals])
-  useEffect(() => write(K.rest, rest), [rest])
   useEffect(() => write(K.payday, payday), [payday])
   useEffect(() => write(K.month, cur), [cur])
 
@@ -257,7 +255,7 @@ export function useMoney() {
   })
 
   // ---------- backup ----------
-  const exportJson = () => JSON.stringify({ ...db, learn: learned, goals, rest }, null, 2)
+  const exportJson = () => JSON.stringify({ ...db, learn: learned, goals }, null, 2)
   const exportCsv = () => '﻿date,type,envelope,note,amount\n' + db.entries.map(e =>
     [e.date, e.type, e.env, `"${String(e.note).replace(/"/g, '""')}"`, e.amount].join(',')).join('\n')
   const importJson = (text: string) => {
@@ -266,7 +264,6 @@ export function useMoney() {
     setDb(prev => mergeBackup(prev, incoming))
     if (!Array.isArray(d) && d.learn) setLearned(l => ({ ...d.learn, ...l }))
     if (!Array.isArray(d) && d.goals) setGoals(g => ({ ...d.goals, ...g }))
-    if (!Array.isArray(d) && Array.isArray(d.rest)) setRest(r => [...new Set([...r, ...d.rest])])
     markDirty()
   }
   const unlearn = (k: string) => setLearned(l => { const n = { ...l }; delete n[k]; return n })
@@ -279,12 +276,11 @@ export function useMoney() {
 
   const months = useMemo(() => [...new Set([...Object.keys(db.months), ...db.entries.map(monthOf), cur, thisMonth(), nextMonth(thisMonth())])]
     .filter(validMonth).sort().reverse(), [db, cur])
-  const restToday = () => setRest(r => r.includes(todayISO()) ? r : [...r, todayISO()])
   const saved = useMemo(() => bucketTotals(db), [db])
   const goalList = useMemo(() => goalProgress(saved, goals), [saved, goals])
 
   return {
-    db, cur, setCur, months, month, planNames, learned, goals, goalList, saved, setGoal, rest, restToday, payday, setPayday,
+    db, cur, setCur, months, month, planNames, learned, goals, goalList, saved, setGoal, payday, setPayday,
     gas, sync, connect, disconnect, syncNow: () => (read(K.dirty, null) && canPush() ? pushUp() : pullDown()),
     entryDate, setEntryDate, setDate, addQuick, setEnv, setAmount, delEntry, payRow, unpayRow, undo, undoDelete,
     updateRow, addRow, delRow, addDebt, carry, setFuel, applyFuel,

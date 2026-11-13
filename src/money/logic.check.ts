@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {
   alloc, budgetState, byAccount, carryMonth, daysInMonth, evalAmount, fuelCost, guessEnv,
   looksLikeToken, mergeBackup, mergeIntoRemote, nextMonth, nextPeriod, parseQuick, payoffMonth, periodN, pieData,
-  prevMonth, spendable, paidNames, isPaid, paidEntryId, sum, bucketTotals, goalProgress, validGasUrl, validMonth, vsPlan, yearMonths, dayLog, weekStart, addDays, weekDays, monthTotals, envTotals, dayTotals, type MoneyDb,
+  prevMonth, spendable, paidNames, isPaid, paidEntryId, sum, bucketTotals, goalProgress, validGasUrl, validMonth, vsPlan, yearMonths, weekStart, addDays, weekDays, monthTotals, envTotals, dayTotals, type MoneyDb,
 } from './logic.ts'
 
 const eq = (a: unknown, b: unknown, m: string) => assert.deepEqual(a, b, m)
@@ -149,12 +149,6 @@ const tot = bucketTotals(doc)
 eq(tot['ลงทุน DCA'], 9000, 'bucket saved = left × pct')
 const g = goalProgress(tot, { 'ลงทุน DCA': 18000, 'เที่ยว': 10000, 'ไม่มี': 0 })
 eq(g.map(x => [x.name, x.pct, x.reached]), [['ลงทุน DCA', 50, false], ['เที่ยว', 100, true]], 'unfinished first, zero targets dropped')
-
-// day HP: 15000 plan in a 30-day month, 5000 spent on the 1st
-const dl = dayLog(doc, '2026-09', 15000)
-eq([dl[0].max, dl[0].hp, dl[0].active], [500, -4500, true], 'day 1: 15000/30 HP, took 5000')
-eq(dl[1].max, 10000 / 29, 'day 2 HP = what is left ÷ days left')
-eq(dl[1].active, false, 'nothing logged on day 2')
 
 // weeks
 eq(weekStart('2026-09-28'), '2026-09-28', 'Mon 28 Sep is its own week start')

@@ -338,3 +338,8 @@ React 19 · TypeScript · Vite · Tailwind CSS v4 · Framer Motion · Lucide ico
 ## 2026-11-13 — Task 9 fix round 1
 - `charts.tsx`: future-month bars dashed outline instead of opacity-60 (contrast). `i18n.ts`: weekAvg label says "so far" (en+th). `useMoney.ts`: month picker always offers next month.
 - Next steps: Task 10 onward per plan.
+
+## 2026-11-13 — Task 10: calendar without the game
+- `CalendarView.tsx`: tiles are `over | under | none | future` from `dayTotals` vs `spendable().perDay`; each spent day shows its total (850 / 1.2k / 12k). Legend = 2 states. `index.css`: `--t-*` tile colours per theme (contrast >= 5.9:1). `i18n.ts`: legend `{under, over}` both langs.
+- Removed `dayLog`, `validRest` (+ checks), `rest`/`setRest`/`restToday` from `useMoney` (export no longer carries `rest`; import ignores it). Key `investor-rpg:money.rest` kept, never read/written.
+- Next steps: final review of the plan.

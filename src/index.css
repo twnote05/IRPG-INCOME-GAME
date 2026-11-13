@@ -64,6 +64,8 @@
   --segment: rgb(255 255 255 / 0.55);
   /* category palette (from โปรเจค 2, checked for color-blind separation) */
   --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #4a3aa7; --s7: #8a8780;
+  /* calendar day tiles: bg + the text on it, all >= 4.5:1 */
+  --t-over: #f0908f; --t-under: #6fc462; --t-none: #dccaa4; --t-fg: #2a1d0e; --t-future: #4e3a22;
 }
 
 :root[data-theme="dark"] {
@@ -82,6 +84,7 @@
   --ink: #f7f0dc;
   --muted: #8a92c8;
   --segment: rgb(0 0 0 / 0.35);
+  --t-over: #8f2a30; --t-under: #24692c; --t-none: #2c3470; --t-fg: #f7f0dc; --t-future: #cfcde0;
   --s1: #4cc2ff; --s2: #ff8a3d; --s3: #6fcf5f; --s4: #f2c14e; --s5: #ff7eb6; --s6: #a06cd5; --s7: #8a92c8;
 
   --color-slate-50: #ffffff;
