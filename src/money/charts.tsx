@@ -34,6 +34,42 @@ export function BarsH({ rows, max, empty }: { rows: HRow[]; max?: number; empty:
   )
 }
 
+export interface VBar { label: string; value: number; now?: boolean; dim?: boolean; sel?: boolean }
+const compact = (n: number) => (n >= 10000 ? `${Math.round(n / 1000)}k` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : fmt0(n))
+
+/**
+ * Vertical bars for 7 days and 12 months. Every bar prints its value; with 8+ bars the value is
+ * abbreviated (12.3k) so it fits a ~27px column. `onPick` makes each bar a full-height button
+ * (name = label + value). `now` adds a triangle under the label, `dim` fades it, `sel` outlines it.
+ */
+export function BarsV({ rows, empty, onPick, nowText = '' }: { rows: VBar[]; empty: string; onPick?: (i: number) => void; nowText?: string }) {
+  const top = Math.max(...rows.map(r => r.value), 0)
+  if (!top) return <p className="py-6 text-center text-sm text-slate-500">{empty}</p>
+  const show = rows.length > 8 ? compact : fmt0
+  return (
+    <div className="flex gap-0.5">
+      {rows.map((r, i) => {
+        const inner = (
+          <>
+            <span className="font-mono text-[10px] leading-4 text-slate-200">{r.value ? show(r.value) : '–'}</span>
+            <span className="flex h-24 w-full items-end justify-center">
+              <span className={`w-4/5 max-w-8 ${r.now ? 'bg-emerald-600' : 'bg-blue-600'} ${PX}`}
+                style={{ height: `${r.value / top * 100}%`, minHeight: r.value ? 3 : 0 }} />
+            </span>
+            <span className={`text-[10px] leading-4 text-slate-300 ${r.now ? 'font-bold' : ''}`}>{r.label}</span>
+            <span aria-hidden className="h-3 text-[8px] leading-3 text-emerald-700">{r.now ? '\u25B2' : ''}</span>
+          </>
+        )
+        const cls = `flex min-w-0 flex-1 flex-col items-center ${r.dim ? 'opacity-60' : ''} ${r.sel ? 'outline outline-2 outline-offset-[-2px] outline-emerald-600' : ''}`
+        const name = `${r.label} ${fmt0(r.value)}${r.now ? ` (${nowText})` : ''}`
+        return onPick
+          ? <button key={i} type="button" className={`${cls} min-h-11`} aria-label={name} aria-current={r.sel || undefined} onClick={() => onPick(i)}>{inner}</button>
+          : <div key={i} className={cls} role="img" aria-label={name}>{inner}</div>
+      })}
+    </div>
+  )
+}
+
 /** Donut drawn on a pixel grid: stepped edges, dark outline, outline-colored seams between slices. */
 export function PixelRing({ slices, center, label, size = 'size-44' }: {
   slices: { label: string; value: number; color: string }[]; center?: ReactNode; label: string; size?: string

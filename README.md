@@ -327,3 +327,10 @@ React 19 · TypeScript · Vite · Tailwind CSS v4 · Framer Motion · Lucide ico
 - `PlanView.tsx`: 44px pay button on every named recurring/debt row, paid rows dimmed, header tally; blank-named rows show no button.
 - `i18n.ts`: `markPaid`, `paidTick`, `paidTally` in both dictionaries.
 - Next steps: Task 8 onward per plan.
+
+## 2026-11-13 — Task 9: summary is one scrolling page
+- `SummaryView.tsx` rewritten: today (`spendable`) -> this week (`weekDays`) -> month (donut + `envTotals` bars) -> whole year (`monthTotals`, tap a bar = switch header month). No mode switch. Today and week render only when selected month is the current month.
+- `charts.tsx`: `BarsV` (7 and 12 bars; 12 uses 12.3k abbreviations; buttons when `onPick`).
+- `logic.ts`: `envTotals` ties sort by label; `dailyBudget` deleted (LogView now uses `spendable`). `logic.check.ts` updated.
+- `i18n.ts`: sumToday, setPlanHint, sumWeek, weekTotal, weekPeak, weekAvg, sumMonth, biggest, smallest, sumYear, nowMark (en + th).
+- Next steps: Task 10 onward per plan; old debt/bucket summary panels were dropped (i18n keys debtTitle/bucketsAll etc. now unused).

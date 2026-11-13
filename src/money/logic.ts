@@ -177,13 +177,6 @@ export function spendable(db: MoneyDb, month: string, today: string): Spendable 
   }
 }
 
-/** Unspent plan ÷ days left in the month (today included). Other months divide by the whole month. */
-export function dailyBudget(planned: number, spent: number, month: string, today: string) {
-  const days = daysInMonth(month)
-  const daysLeft = today.slice(0, 7) === month ? Math.max(1, days - +today.slice(8, 10) + 1) : days
-  const left = planned - spent
-  return { daysLeft, left, perDay: left > 0 ? left / daysLeft : 0 }
-}
 export const vsPlan = (plan: Row[], spentOf: (name: string) => number) => plan
   .filter(p => p.name)
   .map(p => ({ name: p.name, planned: +p.amount || 0, actual: spentOf(p.name) }))
@@ -345,7 +338,7 @@ export const monthTotals = (db: MoneyDb, year: string) => {
 export function envTotals(db: MoneyDb, month: string) {
   const g: Record<string, number> = {}
   for (const e of outs(db)) if (monthOf(e) === month) g[e.env] = (g[e.env] || 0) + (+e.amount || 0)
-  return Object.entries(g).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value)
+  return Object.entries(g).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value || a.label.localeCompare(b.label))
 }
 /** ISO date -> spent, for one month. */
 export function dayTotals(db: MoneyDb, month: string) {

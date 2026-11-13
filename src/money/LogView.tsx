@@ -4,12 +4,12 @@ import QuickAdd from './QuickAdd'
 import CalendarView from './CalendarView'
 import type { Dict, Lang } from '../lib/i18n'
 import { Panel } from '../components/ui'
-import { INCOME_ENV, OTHER, dailyBudget, monthOf, sum, todayISO } from './logic'
+import { INCOME_ENV, OTHER, monthOf, spendable, sum, todayISO } from './logic'
 import { dayLabel, fmt0 } from './fmt'
 import type { Money } from './useMoney'
 
 export default function LogView({ money, t, lang }: { money: Money; t: Dict; lang: Lang }) {
-  const { db, cur, month, planNames } = money
+  const { db, cur, planNames } = money
 
   const rows = useMemo(() => db.entries.filter(e => monthOf(e) === cur), [db.entries, cur])
   const byDay = useMemo(() => {
@@ -17,9 +17,7 @@ export default function LogView({ money, t, lang }: { money: Money; t: Dict; lan
     for (const e of rows) (g[e.date] ??= []).push(e)
     return Object.entries(g).sort((a, b) => b[0].localeCompare(a[0]))
   }, [rows])
-  const planned = sum(month?.plan ?? [])
-  const spent = sum(rows.filter(e => e.type === 'out'))
-  const b = dailyBudget(planned, spent, cur, todayISO())
+  const b = spendable(db, cur, todayISO())
   const envs = [OTHER, ...planNames, INCOME_ENV]
 
   return (
@@ -29,7 +27,7 @@ export default function LogView({ money, t, lang }: { money: Money; t: Dict; lan
         <QuickAdd money={money} t={t} />
       </div>
 
-      {planned > 0 && (
+      {b.hasPlan && (
         <div className={`bevel flex flex-wrap items-baseline gap-x-2 bg-slate-900 px-3 py-2.5 ${b.left > 0 ? '' : 'text-red-700'}`}>
           <span className="text-xs text-slate-400">{b.left > 0 ? t.money.perDayLeft : t.money.overPlan}</span>
           <b className={`font-mono text-2xl ${b.left > 0 ? 'text-blue-700' : 'text-red-700'}`}>{fmt0(b.left > 0 ? b.perDay : -b.left)}</b>

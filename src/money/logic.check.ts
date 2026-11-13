@@ -1,7 +1,7 @@
 // Run: npm run check — the self-tests from โปรเจค 2 (?selftest), ported, plus merge safety.
 import assert from 'node:assert/strict'
 import {
-  alloc, budgetState, byAccount, carryMonth, dailyBudget, daysInMonth, evalAmount, fuelCost, guessEnv,
+  alloc, budgetState, byAccount, carryMonth, daysInMonth, evalAmount, fuelCost, guessEnv,
   looksLikeToken, mergeBackup, mergeIntoRemote, nextMonth, nextPeriod, parseQuick, payoffMonth, periodN, pieData,
   prevMonth, spendable, paidNames, isPaid, paidEntryId, sum, bucketTotals, goalProgress, validGasUrl, validMonth, vsPlan, yearMonths, dayLog, weekStart, addDays, weekDays, monthTotals, envTotals, dayTotals, type MoneyDb,
 } from './logic.ts'
@@ -71,12 +71,6 @@ eq(daysInMonth('2026-10'), 31, 'Oct')
 eq(daysInMonth('2026-11'), 30, 'Nov')
 
 // --- daily allowance ---
-eq(dailyBudget(31000, 10000, '2026-08', '2026-08-01'), { daysLeft: 31, left: 21000, perDay: 21000 / 31 }, 'day 1')
-eq(dailyBudget(31000, 10000, '2026-08', '2026-08-31'), { daysLeft: 1, left: 21000, perDay: 21000 }, 'last day')
-eq(dailyBudget(30000, 30000, '2026-08', '2026-08-15').perDay, 0, 'fully spent')
-eq(dailyBudget(20000, 25000, '2026-08', '2026-08-15').left, -5000, 'overspent is negative')
-eq(dailyBudget(20000, 25000, '2026-08', '2026-08-15').perDay, 0, 'no negative per day')
-eq(dailyBudget(3100, 0, '2026-09', '2026-08-15'), { daysLeft: 30, left: 3100, perDay: 3100 / 30 }, 'other month = whole month')
 eq(yearMonths('2026').length, 12, '12 months')
 eq(yearMonths('2026')[0], '2026-01', 'starts Jan')
 
@@ -254,6 +248,7 @@ eq(monthTotals(SUM, '2026')[2].total, 400, 'March')
 eq(monthTotals(SUM, '2026')[0].total, 0, 'an empty month is zero, not missing')
 eq(envTotals(SUM, '2026-11')[0], { label: 'น้ำมัน', value: 700 }, 'biggest first')
 eq(envTotals(SUM, '2026-11').at(-1)!.label, 'อาหาร', 'smallest last')
+eq(envTotals({ ...SUM, entries: [{ id: 'a', date: '2026-11-01', type: 'out', amount: 5, env: 'b', note: 'x' }, { id: 'b', date: '2026-11-01', type: 'out', amount: 5, env: 'a', note: 'x' }] as MoneyDb['entries'] }, '2026-11').map(r => r.label), ['a', 'b'], 'ties sort by label, not entry order')
 eq(dayTotals(SUM, '2026-11')['2026-11-12'], 750, 'per-day total')
 
 console.log('money.check: all good')
