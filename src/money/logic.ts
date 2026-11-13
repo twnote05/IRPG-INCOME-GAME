@@ -31,13 +31,6 @@ export const daysInMonth = (m: string) => new Date(+m.slice(0, 4), +m.slice(5, 7
 export const yearMonths = (y: string) => Array.from({ length: 12 }, (_, i) => `${y}-${String(i + 1).padStart(2, '0')}`)
 export const monthOf = (e: { date?: string }) => String(e.date || '').slice(0, 7)
 
-/** An entry logged while viewing another month lands in that month, on today's day number (clamped). */
-export function dateInMonth(m: string, now = new Date()) {
-  const today = todayISO(now)
-  if (m === today.slice(0, 7)) return today
-  return `${m}-${String(Math.min(now.getDate(), daysInMonth(m))).padStart(2, '0')}`
-}
-
 // ---------- amounts ----------
 /** Amount fields accept arithmetic (the old sheet had "=100*30"). Digits and operators only. */
 export function evalAmount(s: string | number): number {

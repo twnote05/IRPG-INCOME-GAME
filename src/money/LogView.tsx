@@ -45,14 +45,16 @@ export default function LogView({ money, t, lang }: { money: Money; t: Dict; lan
         <div key={d} id={`day-${d}`} className="scroll-mt-[calc(var(--hdr,0px)+5rem)]"><Panel icon={NotebookPen} glow="mana" title={`${dayLabel(d, lang)} · ${fmt0(sum(items.filter(x => x.type === 'out')))}`}>
           <ul className="-my-1 divide-y divide-slate-800">
             {items.map(e => (
-              <li key={e.id} className="flex items-center gap-2 py-1.5">
-                <span className="min-w-0 flex-1 truncate text-sm text-slate-100">{e.note}</span>
-                <select className="field -my-2 w-28 shrink-0 !py-3 !text-xs sm:w-40" value={envs.includes(e.env) ? e.env : OTHER}
+              <li key={e.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 py-1.5">
+                <span className="min-w-0 basis-full truncate text-sm text-slate-100 sm:basis-0 sm:flex-1">{e.note}</span>
+                <select className="field w-28 min-w-0 flex-1 !py-3 !text-xs sm:w-40 sm:flex-none" value={envs.includes(e.env) ? e.env : OTHER}
                   onChange={ev => money.setEnv(e.id, ev.target.value)} aria-label={t.money.envelope}>
                   {!envs.includes(e.env) && <option value={OTHER}>{e.env}</option>}
                   {envs.map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
-                <button className={`-my-3 w-20 shrink-0 px-1 py-3 text-right font-mono text-sm font-bold ${e.type === 'in' ? 'text-emerald-700' : 'text-red-700'}`}
+                <input type="date" className="field h-11 w-11 shrink-0 !px-0 !py-0 !text-xs [&::-webkit-datetime-edit]:hidden" value={e.date}
+                  onChange={ev => money.setDate(e.id, ev.target.value)} aria-label={t.money.changeDate(e.note)} />
+                <button className={`h-11 w-20 shrink-0 px-1 text-right font-mono text-sm font-bold ${e.type === 'in' ? 'text-emerald-700' : 'text-red-700'}`}
                   aria-label={t.money.editAmount(e.note)}
                   onClick={() => {
                     const v = prompt(t.money.editPrompt(e.note), String(e.amount))
@@ -60,7 +62,7 @@ export default function LogView({ money, t, lang }: { money: Money; t: Dict; lan
                   }}>
                   {e.type === 'in' ? '+' : '−'}{fmt0(e.amount)}
                 </button>
-                <button className="-my-2 -mr-2 shrink-0 p-[13px] text-slate-500 hover:text-red-700" aria-label={t.money.del}
+                <button className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center text-slate-500 hover:text-red-700" aria-label={t.money.del}
                   onClick={() => money.delEntry(e.id)}><X size={18} /></button>
               </li>
             ))}

@@ -1,7 +1,7 @@
 // Run: npm run check — the self-tests from โปรเจค 2 (?selftest), ported, plus merge safety.
 import assert from 'node:assert/strict'
 import {
-  alloc, budgetState, byAccount, carryMonth, dailyBudget, dateInMonth, daysInMonth, evalAmount, fuelCost, guessEnv,
+  alloc, budgetState, byAccount, carryMonth, dailyBudget, daysInMonth, evalAmount, fuelCost, guessEnv,
   looksLikeToken, mergeBackup, mergeIntoRemote, nextMonth, nextPeriod, parseQuick, payoffMonth, periodN, pieData,
   prevMonth, spendable, paidNames, isPaid, paidEntryId, sum, bucketTotals, goalProgress, validGasUrl, validMonth, vsPlan, yearMonths, dayLog, weekStart, addDays, type MoneyDb,
 } from './logic.ts'
@@ -96,8 +96,6 @@ eq(budgetState(1000, 1000), 'warn', 'exactly on budget is not over')
 eq(budgetState(1001, 1000), 'over', 'over')
 eq(budgetState(0, 0), 'ok', 'no budget no spend')
 eq(budgetState(50, 0), 'over', 'spend without budget')
-ok(dateInMonth('2026-10').startsWith('2026-10'), 'logs into viewed month')
-ok(dateInMonth('2026-02', new Date(2026, 2, 31)) <= '2026-02-28', 'day 31 clamps to Feb')
 
 // --- vsPlan / byAccount ---
 const spent: Record<string, number> = { 'ค่ากิน': 3200, 'ค่าไฟ': 900 }

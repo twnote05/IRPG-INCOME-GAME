@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  DEFAULT_FUEL, blankMonth, carryMonth, dateInMonth, evalAmount, fuelCost, mergeBackup, mergeIntoRemote, monthOf, norm,
+  DEFAULT_FUEL, blankMonth, carryMonth, evalAmount, fuelCost, mergeBackup, mergeIntoRemote, monthOf, norm,
   OTHER, bucketTotals, goalProgress, parseQuick, todayISO, prevMonth, thisMonth, uid, validGasUrl, validMonth, withIds,
   type Bucket, type Fuel, type MoneyDb, type MonthPlan, type Row,
 } from './logic'
@@ -49,6 +49,7 @@ export function useMoney() {
   const [rest, setRest] = useState<string[]>(() => read(K.rest, []))
   const [payday, setPayday] = useState<Payday>(() => read(K.payday, 'last' as Payday))
   const [cur, setCur] = useState(() => { const m = read(K.month, ''); return validMonth(m) ? m : thisMonth() })
+  const [entryDate, setEntryDateRaw] = useState(() => todayISO()) // not persisted: a fresh launch starts on today
   const [gas, setGas] = useState<GasConfig | null>(() => read(K.gas, null))
   const [sync, setSync] = useState<SyncState>({ state: gas ? 'syncing' : 'local' })
 
@@ -170,12 +171,33 @@ export function useMoney() {
   const planNames = useMemo(() => (month?.plan ?? []).map(p => p.name).filter(Boolean), [month])
 
   // ---------- log ----------
-  /** `onToday`: the home screen always logs today, whatever month the log tab is showing. */
-  const addQuick = (text: string, onToday = false) => {
+  // The date wins: an entry lands on its date and the view follows it to that month.
+  // setCur is only called from these event handlers, never from an effect, so it cannot loop.
+  const showMonthOf = (date: string) => setCur(m => (validMonth(monthOf({ date })) ? monthOf({ date }) : m))
+  const validDate = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d) && validMonth(d.slice(0, 7))
+  const setEntryDate = (d: string) => {
+    if (!validDate(d)) return // cleared field: keep the last good date
+    setEntryDateRaw(d)
+    showMonthOf(d)
+  }
+  const setDate = (id: string, date: string) => {
+    if (!validDate(date)) return
+    setDb(prev => {
+      const n = structuredClone(prev)
+      const e = n.entries.find(x => x.id === id)
+      if (e) e.date = date
+      return n
+    })
+    markDirty()
+    showMonthOf(date)
+  }
+  const addQuick = (text: string) => {
     const e = parseQuick(text, planNames, learned)
     if (!e) return null
-    const entry = { id: uid(), date: onToday ? todayISO() : dateInMonth(cur), ...e }
-    mutate(d => { d.entries.unshift(entry) })
+    const entry = { id: uid(), date: entryDate, ...e }
+    setDb(prev => ({ ...prev, entries: [entry, ...prev.entries] }))
+    markDirty()
+    showMonthOf(entryDate)
     return entry
   }
   const setEnv = (id: string, env: string) => {
@@ -250,7 +272,7 @@ export function useMoney() {
   return {
     db, cur, setCur, months, month, planNames, learned, goals, goalList, saved, setGoal, rest, restToday, payday, setPayday,
     gas, sync, connect, disconnect, syncNow: () => (read(K.dirty, null) && canPush() ? pushUp() : pullDown()),
-    addQuick, setEnv, setAmount, delEntry, undo, undoDelete,
+    entryDate, setEntryDate, setDate, addQuick, setEnv, setAmount, delEntry, undo, undoDelete,
     updateRow, addRow, delRow, addDebt, carry, setFuel, applyFuel,
     exportJson, exportCsv, importJson, unlearn, clearLearned, evalAmount,
   }

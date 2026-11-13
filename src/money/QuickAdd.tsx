@@ -4,14 +4,14 @@ import type { Dict } from '../lib/i18n'
 import type { Money } from './useMoney'
 
 /** The everyday quick-add box. */
-export default function QuickAdd({ money, t, onToday = false }: { money: Money; t: Dict; onToday?: boolean }) {
+export default function QuickAdd({ money, t }: { money: Money; t: Dict }) {
   const [text, setText] = useState('')
   const [shake, setShake] = useState(false)
   const input = useRef<HTMLInputElement>(null)
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (money.addQuick(text, onToday)) setText('')
+    if (money.addQuick(text)) setText('')
     else { setShake(true); setTimeout(() => setShake(false), 400); input.current?.focus() }
   }
 
@@ -22,6 +22,8 @@ export default function QuickAdd({ money, t, onToday = false }: { money: Money; 
           placeholder={t.money.quickPh} aria-label={t.money.quickAria} autoComplete="off" enterKeyHint="done" />
         <button className="btn btn-primary min-h-11 shrink-0 px-4 font-bold">{t.money.add}</button>
       </form>
+      <input type="date" className={`${inputCls} mt-1.5 min-h-11 w-full`} value={money.entryDate}
+        onChange={e => money.setEntryDate(e.target.value)} aria-label={t.money.entryDate} />
       <p className="mt-1.5 px-1 text-[11px] text-slate-500">{t.money.hint}</p>
     </>
   )

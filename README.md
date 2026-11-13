@@ -310,3 +310,14 @@ React 19 · TypeScript · Vite · Tailwind CSS v4 · Framer Motion · Lucide ico
 
 ### Next steps
 - ผู้ใช้ที่ deploy GAS ไว้แล้วต้อง deploy เวอร์ชันใหม่เองถ้าอยากให้ backend ตรงกัน (แอปเก่าที่ยังส่ง `gameSave` จะได้ error)
+
+## 2026-11-13 — เลือกวันที่ตอนบันทึก และแก้วันที่ทีหลังได้
+
+- `useMoney.ts`: เพิ่ม `entryDate` (state เท่านั้น ไม่เก็บลง localStorage — เปิดใหม่เริ่มที่วันนี้) `setEntryDate` `setDate(id, date)`; `addQuick(text)` ใช้ `entryDate` (ตัดพารามิเตอร์ `onToday`). กฎ: วันที่ชนะ — ถ้าอยู่คนละเดือนกับที่ header แสดง จะ `setCur` ตามไป (เรียกจาก event handler เท่านั้น ไม่มี effect จึงไม่วนลูป)
+- `logic.ts` / `logic.check.ts`: ลบ `dateInMonth` กับ assertion
+- `QuickAdd.tsx`: ช่อง `<input type="date">` ใต้ช่องพิมพ์ ค่าคงอยู่หลังกดเพิ่ม; ตัด prop `onToday`
+- `LogView.tsx`: แต่ละแถวมีปุ่มวันที่ (ไอคอนปฏิทิน 44px); แถวเป็น 2 บรรทัดบนมือถือ (ชื่อเต็มบรรทัด) เพราะที่ 375px ชื่อถูกบีบเหลือ 20px
+- `i18n.ts`: `money.entryDate`, `money.changeDate` ทั้ง en/th
+
+### Next steps
+- ตรวจปุ่มวันที่ในแถวบน Safari/Firefox (ซ่อนข้อความด้วย `::-webkit-datetime-edit` เฉพาะ Chromium)
