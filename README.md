@@ -301,3 +301,12 @@ React 19 · TypeScript · Vite · Tailwind CSS v4 · Framer Motion · Lucide ico
   เพราะ `CalendarView.tsx` ยังใช้ `dayLog`/`validRest` อยู่ — task ถัดไปจะเปลี่ยนปฏิทินแล้วค่อยลบ
 - `index.html` ยังใช้ชื่อ "Investor RPG" (title, meta, manifest) ถ้าจะเปลี่ยนชื่อแอปบอกได้
 - การแก้ยอดเงินยังใช้ `prompt()` ของเบราว์เซอร์
+
+## 2026-11-13 — ตัด game sync ออกจาก Apps Script
+
+- `gas/Code.gs`: ลบ `gameLoad` `gameSave` `GAME_COLS` `GAME_CHUNK` property `GAME_SAVED_AT` รายการใน `doPost` และบรรทัดหัวไฟล์เรื่องแท็บ `game` — `doPost` เหลือ `load` `save` `quick`
+- `gas/code.check.mjs`: เขียนใหม่ — เช็คว่า `gameSave`/`gameLoad` เป็น unknown action, `save`→`load` คีย์เดือน `'2026-11'` กลับมาเป็นสตริง (mock จำลอง Sheets แปลงสตริงคล้ายวันที่เป็น Date ถ้าเซลล์ไม่ใช่ข้อความ), `quick` ต่อท้ายรายการ, action แปลก/token ผิดได้ error
+- แท็บ `game` ในชีตของผู้ใช้ปล่อยไว้ ไม่ลบ ไม่ล้าง ไม่มีโค้ดไหนแตะอีก
+
+### Next steps
+- ผู้ใช้ที่ deploy GAS ไว้แล้วต้อง deploy เวอร์ชันใหม่เองถ้าอยากให้ backend ตรงกัน (แอปเก่าที่ยังส่ง `gameSave` จะได้ error)

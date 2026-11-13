@@ -1,7 +1,6 @@
 /**
  * Backend ของ Investor RPG — เก็บข้อมูลใน Google Sheet ของคุณเอง
  * รายรับ-รายจ่าย: แท็บ entries + plan (โปรโตคอลเดียวกับแอปรายรับรายจ่ายเดิม)
- * ฝั่งลงทุน/ตัวละคร: แท็บ game (JSON แบ่งเป็นชิ้น) — action gameLoad / gameSave
  * ตั้งค่า Script Property 1 ตัว: TOKEN  (Run ฟังก์ชัน setup ด้านล่าง)
  * Deploy: New deployment > Web app > Execute as: Me, Who has access: Anyone
  * วิธีตั้งค่าทีละขั้นอยู่ใน README.md หัวข้อ "ตั้งค่าเริ่มใช้งาน"
@@ -32,7 +31,7 @@ function doPost(e) {
                          : !req.token     ? 'unauthorized: แอปไม่ได้ส่ง TOKEN มา — กรอกในช่องตั้งค่า'
                          : 'unauthorized: TOKEN ไม่ตรง — ค่าที่ถูกต้องอยู่ใน Execution log ของ setup (เป็น UUID มีขีด 4 ขีด)' });
     }
-    const fn = ({ load, save, quick, gameLoad, gameSave })[req.action];
+    const fn = ({ load, save, quick })[req.action];
     if (!fn) return json({ error: 'unknown action: ' + req.action });
     return json(fn(req));
   } catch (err) {
@@ -152,31 +151,6 @@ function save(req) {
 
   const at = new Date().toISOString();
   PropertiesService.getScriptProperties().setProperty('SAVED_AT', at);
-  return { ok: true, savedAt: at };
-}
-
-// ---------- ฝั่งลงทุน / ตัวละคร ----------
-// ทั้งก้อนเป็น JSON เดียว แบ่งเป็นชิ้นละ 40,000 ตัวอักษร (เซลล์เก็บได้ไม่เกิน 50,000)
-// ทุกชิ้นขึ้นต้นด้วย ~ กัน Sheets ตีความชิ้นที่บังเอิญขึ้นต้นด้วย = + - @ เป็นสูตร
-const GAME_COLS = ['part', 'json'];
-const GAME_CHUNK = 40000;
-
-function gameLoad() {
-  const parts = rows(sheet('game', GAME_COLS))
-    .sort((a, b) => Number(a.part) - Number(b.part))
-    .map(r => String(r.json).replace(/^~/, ''));
-  return { state: parts.join(''), savedAt: prop('GAME_SAVED_AT') || '' };
-}
-
-function gameSave(req) {
-  const s = String(req.state || '');
-  const doc = JSON.parse(s); // ต้องเป็น JSON ที่ถูกต้อง ไม่งั้นไม่เขียนทับของเดิม
-  if (!doc || !doc.profile || !Array.isArray(doc.assets)) throw new Error('ข้อมูลเกมไม่ครบ ไม่บันทึก');
-  const chunks = [];
-  for (let i = 0; i < s.length; i += GAME_CHUNK) chunks.push({ part: chunks.length, json: '~' + s.slice(i, i + GAME_CHUNK) });
-  writeAll(sheet('game', GAME_COLS), GAME_COLS, chunks, ['json']);
-  const at = new Date().toISOString();
-  PropertiesService.getScriptProperties().setProperty('GAME_SAVED_AT', at);
   return { ok: true, savedAt: at };
 }
 
