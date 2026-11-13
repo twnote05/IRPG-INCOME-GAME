@@ -43,18 +43,18 @@ export default function App() {
 
   return (
     <div className="min-h-dvh">
-      <header ref={header} className="sticky top-0 z-30 border-b-2 border-retro-gold bg-retro-deep pt-[env(safe-area-inset-top)] text-retro-cream shadow-[0_2px_0_#0a0c24]">
-        <div className="mx-auto flex max-w-3xl items-center gap-x-3 px-3 py-2 sm:px-4">
-          <h1 className="flex min-w-0 items-center gap-2 font-rpg text-lg tracking-wider sm:text-2xl">
-            <Wallet size={22} className="shrink-0" /> <span className="truncate">{t.appName}</span>
+      <header ref={header} className="sticky top-0 z-30 border-b border-line bg-card pt-[env(safe-area-inset-top)]">
+        <div className="mx-auto flex max-w-3xl items-center gap-x-3 px-3 py-1.5 sm:px-4">
+          <h1 className="flex min-w-0 items-center gap-2 text-base font-semibold sm:text-lg">
+            <Wallet size={18} className="shrink-0 text-muted" /> <span className="truncate">{t.appName}</span>
           </h1>
           <div className="ml-auto flex shrink-0 items-center gap-1.5">
             <button onClick={() => setPrefs(p => ({ ...p, lang: p.lang === 'th' ? 'en' : 'th' }))}
-              className="btn flex min-h-11 items-center gap-1 px-2.5 text-xs" aria-label={t.switchLangAria} title={t.switchLangAria}>
+              className="btn px-2.5 text-xs" aria-label={t.switchLangAria} title={t.switchLangAria}>
               <Languages size={16} /> <span className="max-sm:hidden">{t.switchLang}</span>
             </button>
             <button onClick={() => setPrefs(p => ({ ...p, theme: p.theme === 'dark' ? 'light' : 'dark' }))}
-              className="btn min-h-11 px-3" aria-label={dark ? t.lightMode : t.darkMode} title={dark ? t.lightMode : t.darkMode}>
+              className="btn px-3" aria-label={dark ? t.lightMode : t.darkMode} title={dark ? t.lightMode : t.darkMode}>
               {dark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
           </div>
@@ -66,13 +66,14 @@ export default function App() {
       </main>
 
       {/* Phone taskbar — the three money pages; settings lives behind the gear */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t-2 border-retro-gold bg-retro-deep px-1 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] shadow-[0_-2px_0_#0a0c24] md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex items-stretch border-t border-line bg-card pb-[max(0.25rem,env(safe-area-inset-bottom))] md:hidden">
         {MONEY_TABS.map(id => {
           const Icon = TAB_ICON[id]
           const active = tab === id
+          // active = a line above the tab + bold label, not color alone
           return (
             <button key={id} onClick={() => setTab(id)} aria-current={active ? 'page' : undefined}
-              className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 border-2 text-[11px] ${active ? 'border-retro-gold bg-white/10 font-bold text-retro-gold' : 'border-transparent text-retro-mint'}`}>
+              className={`flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 border-t-2 pt-1 text-[11px] ${active ? 'border-accent font-bold text-accent' : 'border-transparent text-muted'}`}>
               <Icon size={22} /> {t.money.tabs[id]}
             </button>
           )

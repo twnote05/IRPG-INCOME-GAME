@@ -17,14 +17,13 @@ export default function QuickAdd({ money, t }: { money: Money; t: Dict }) {
 
   return (
     <>
-      <form onSubmit={submit} className={`bevel flex gap-2 bg-slate-900 p-2 ${shake ? 'animate-[shake_0.35s]' : ''}`}>
+      <form onSubmit={submit} className={`flex gap-2 ${shake ? 'animate-[shake_0.35s]' : ''}`}>
         <input ref={input} className={`${inputCls} min-w-0 flex-1`} value={text} onChange={e => setText(e.target.value)}
           placeholder={t.money.quickPh} aria-label={t.money.quickAria} autoComplete="off" enterKeyHint="done" />
-        <button className="btn btn-primary min-h-11 shrink-0 px-4 font-bold">{t.money.add}</button>
+        <button className="btn btn-primary shrink-0 px-4">{t.money.add}</button>
       </form>
-      <input type="date" className={`${inputCls} mt-1.5 min-h-11 w-full`} value={money.entryDate}
+      <input type="date" className={`${inputCls} mt-1.5 w-full`} value={money.entryDate}
         onChange={e => money.setEntryDate(e.target.value)} aria-label={t.money.entryDate} />
-      <p className="mt-1.5 px-1 text-[11px] text-slate-500">{t.money.hint}</p>
     </>
   )
 }

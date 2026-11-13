@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   DEFAULT_FUEL, blankMonth, carryMonth, evalAmount, fuelCost, mergeBackup, mergeIntoRemote, monthOf, norm,
-  OTHER, paidEntryId, bucketTotals, goalProgress, parseQuick, todayISO, nextMonth, prevMonth, thisMonth, uid, validGasUrl, validMonth, withIds,
+  OTHER, paidEntryId, bucketTotals, parseQuick, todayISO, nextMonth, prevMonth, thisMonth, uid, validGasUrl, validMonth, withIds,
   type Bucket, type Fuel, type MoneyDb, type MonthPlan, type Row,
 } from './logic'
 import type { Payday } from '../lib/calendar'
@@ -277,10 +277,9 @@ export function useMoney() {
   const months = useMemo(() => [...new Set([...Object.keys(db.months), ...db.entries.map(monthOf), cur, thisMonth(), nextMonth(thisMonth())])]
     .filter(validMonth).sort().reverse(), [db, cur])
   const saved = useMemo(() => bucketTotals(db), [db])
-  const goalList = useMemo(() => goalProgress(saved, goals), [saved, goals])
 
   return {
-    db, cur, setCur, months, month, planNames, learned, goals, goalList, saved, setGoal, payday, setPayday,
+    db, cur, setCur, months, month, planNames, learned, goals, saved, setGoal, payday, setPayday,
     gas, sync, connect, disconnect, syncNow: () => (read(K.dirty, null) && canPush() ? pushUp() : pullDown()),
     entryDate, setEntryDate, setDate, addQuick, setEnv, setAmount, delEntry, payRow, unpayRow, undo, undoDelete,
     updateRow, addRow, delRow, addDebt, carry, setFuel, applyFuel,

@@ -177,12 +177,6 @@ export function spendable(db: MoneyDb, month: string, today: string): Spendable 
   }
 }
 
-export const vsPlan = (plan: Row[], spentOf: (name: string) => number) => plan
-  .filter(p => p.name)
-  .map(p => ({ name: p.name, planned: +p.amount || 0, actual: spentOf(p.name) }))
-  .map(r => ({ ...r, diff: r.actual - r.planned }))
-  .sort((a, b) => b.diff - a.diff)
-
 /** Donut data: at most 6 slices, the rest folded into one — beyond that neighbouring colors blur. */
 export const PIE_MAX = 6
 export function pieData(rows: { label: string; value: number }[], otherLabel = (n: number) => `${OTHER} (${n})`) {
@@ -270,14 +264,6 @@ export function bucketTotals(db: MoneyDb, monthKeys = Object.keys(db.months)) {
     for (const b of alloc(sum(m.income) - sum(m.plan), m.buckets)) if (b.name) tot[b.name] = (tot[b.name] || 0) + b.baht
   }
   return tot
-}
-
-/** Savings goals: target per bucket name (kept on this device, like learned envelopes). */
-export function goalProgress(totals: Record<string, number>, goals: Record<string, number>) {
-  return Object.entries(goals).filter(([, target]) => target > 0).map(([name, target]) => {
-    const saved = totals[name] || 0
-    return { name, target, saved, pct: Math.min(100, saved / target * 100), reached: saved >= target }
-  }).sort((a, b) => Number(a.reached) - Number(b.reached) || b.pct - a.pct)
 }
 
 // ---------- weeks ----------

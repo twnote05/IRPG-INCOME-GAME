@@ -35,45 +35,50 @@ export default function SummaryView({ money, t, lang }: { money: Money; t: Dict;
   return (
     <div className="space-y-3">
       {isNow && (
-        <Panel title={T.sumToday} icon={Wallet} glow="emerald">
+        <Panel title={T.perDayLeft} icon={Wallet}>
           {sp.hasPlan ? (
             <div className="text-center">
-              <div className={`font-mono text-5xl font-bold ${sp.left > 0 ? 'text-slate-100' : 'text-red-700'}`}>{fmt0(sp.left > 0 ? sp.perDay : -sp.left)}</div>
-              <div className="mt-1 text-xs text-slate-400">
+              <div className={`font-mono text-5xl font-bold ${sp.left > 0 ? 'text-ink' : 'text-neg'}`}>{fmt0(sp.left > 0 ? sp.perDay : -sp.left)}</div>
+              <div className="mt-1 text-xs text-muted">
                 {sp.left > 0 ? T.leftDays(fmt0(sp.left), sp.daysLeft) : `${T.overPlan} · ${T.daysToEnd(sp.daysLeft)}`}
               </div>
             </div>
-          ) : <p className="py-2 text-center text-sm text-slate-300">{T.setPlanHint}</p>}
+          ) : <p className="py-2 text-center text-sm text-muted">{T.setPlanHint}</p>}
         </Panel>
       )}
 
       {isNow && (
-        <Panel title={T.sumWeek} icon={CalendarDays} glow="mana">
+        <Panel title={T.sumWeek} icon={CalendarDays}>
           <BarsV empty={T.noSpend} nowText={T.nowMark}
             rows={week.map((d, i) => ({ label: wd(d.date, lang), value: d.total, now: i === todayIdx }))} />
           <dl className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-            <div><dt className="text-slate-400">{T.weekTotal}</dt><dd className="font-mono font-bold text-slate-100">{fmt0(weekSum)}</dd></div>
-            <div><dt className="text-slate-400">{T.weekPeak}</dt><dd className="font-mono font-bold text-slate-100">{peak.total ? `${dayLabel(peak.date, lang)} · ${fmt0(peak.total)}` : '–'}</dd></div>
-            <div><dt className="text-slate-400">{T.weekAvg}</dt><dd className="font-mono font-bold text-slate-100">{fmt0(weekSum / (todayIdx + 1))}</dd></div>
+            <div><dt className="text-muted">{T.weekTotal}</dt><dd className="font-mono font-bold">{fmt0(weekSum)}</dd></div>
+            <div><dt className="text-muted">{T.weekPeak}</dt><dd className="font-mono font-bold">{peak.total ? `${dayLabel(peak.date, lang)} · ${fmt0(peak.total)}` : '–'}</dd></div>
+            <div><dt className="text-muted">{T.weekAvg}</dt><dd className="font-mono font-bold">{fmt0(weekSum / (todayIdx + 1))}</dd></div>
           </dl>
         </Panel>
       )}
 
-      <Panel title={T.sumMonth(monthLabel(cur, lang))} icon={PieChart} glow="gold">
+      <Panel title={T.sumMonth(monthLabel(cur, lang))} icon={PieChart}>
+        {/* a month that hasn't happened yet has not been "spent this month" */}
+        {cur > nowMonth && !spent ? (
+          <p className="py-2 text-center text-sm text-muted">{T.futureMonth}</p>
+        ) : (
         <div className="text-center">
-          <div className="text-[11px] tracking-widest text-slate-500 uppercase">{T.spentMonth}</div>
-          <div className={`font-mono text-3xl font-bold ${planned && spent > planned ? 'text-red-700' : 'text-slate-100'}`}>{fmt(spent)}</div>
-          <div className="text-xs text-slate-400">
+          <div className="text-[11px] text-muted">{T.spentMonth}</div>
+          <div className={`font-mono text-3xl font-bold ${planned && spent > planned ? 'text-neg' : 'text-ink'}`}>{fmt(spent)}</div>
+          <div className="text-xs text-muted">
             {planned ? (spent > planned ? T.overBy(fmt0(spent - planned)) : T.underPlan(fmt0(planned - spent))) : T.noPlan}
           </div>
         </div>
+        )}
         <div className="mt-3">
           <Donut rows={envs} totalLabel={T.total} empty={T.noSpend} otherLabel={T.otherN} />
         </div>
         {envs.length > 0 && (
           <div className="mt-3">
             <BarsH empty={T.noData} rows={envs} />
-            <p className="mt-3 text-xs text-slate-300">
+            <p className="mt-3 text-xs">
               {T.biggest(envs[0].label, fmt0(envs[0].value))}
               {envs.length > 1 && <> · {T.smallest(envs[envs.length - 1].label, fmt0(envs[envs.length - 1].value))}</>}
             </p>
@@ -81,7 +86,7 @@ export default function SummaryView({ money, t, lang }: { money: Money; t: Dict;
         )}
       </Panel>
 
-      <Panel title={T.sumYear(year)} icon={BarChart3} glow="ruby">
+      <Panel title={T.sumYear(year)} icon={BarChart3}>
         <BarsV empty={T.noSpend} nowText={T.nowMark} onPick={i => money.setCur(months[i].month)}
           rows={months.map(m => ({
             label: monthLabel(m.month, lang).split(' ')[0], value: m.total,

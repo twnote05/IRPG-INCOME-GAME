@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {
   alloc, budgetState, byAccount, carryMonth, daysInMonth, evalAmount, fuelCost, guessEnv,
   looksLikeToken, mergeBackup, mergeIntoRemote, nextMonth, nextPeriod, parseQuick, payoffMonth, periodN, pieData,
-  prevMonth, spendable, paidNames, isPaid, paidEntryId, sum, bucketTotals, goalProgress, validGasUrl, validMonth, vsPlan, yearMonths, weekStart, addDays, weekDays, monthTotals, envTotals, dayTotals, type MoneyDb,
+  prevMonth, spendable, paidNames, isPaid, paidEntryId, sum, bucketTotals, validGasUrl, validMonth, yearMonths, weekStart, addDays, weekDays, monthTotals, envTotals, dayTotals, type MoneyDb,
 } from './logic.ts'
 
 const eq = (a: unknown, b: unknown, m: string) => assert.deepEqual(a, b, m)
@@ -91,10 +91,7 @@ eq(budgetState(1001, 1000), 'over', 'over')
 eq(budgetState(0, 0), 'ok', 'no budget no spend')
 eq(budgetState(50, 0), 'over', 'spend without budget')
 
-// --- vsPlan / byAccount ---
-const spent: Record<string, number> = { 'ค่ากิน': 3200, 'ค่าไฟ': 900 }
-eq(vsPlan([row({ name: 'ค่ากิน', amount: 3000 }), row({ name: 'ค่าไฟ', amount: 1500 }), row({ name: '', amount: 9 })], n => spent[n] || 0),
-  [{ name: 'ค่ากิน', planned: 3000, actual: 3200, diff: 200 }, { name: 'ค่าไฟ', planned: 1500, actual: 900, diff: -600 }], 'over first, skip unnamed')
+// --- byAccount ---
 eq(byAccount([row({ amount: 3000, acct: 'KNN' }), row({ amount: 4325, acct: 'KNN' }), row({ amount: 9822 })]), [['KNN', 7325], ['—', 9822]], 'group by account')
 
 // --- URL / token ---
@@ -144,11 +141,9 @@ const doc: MoneyDb = {
 }
 eq(sum([{ amount: 1 }, { amount: '2' as unknown as number }]), 3, 'sum tolerates strings')
 
-// --- goals / day log ---
+// --- buckets / day log ---
 const tot = bucketTotals(doc)
 eq(tot['ลงทุน DCA'], 9000, 'bucket saved = left × pct')
-const g = goalProgress(tot, { 'ลงทุน DCA': 18000, 'เที่ยว': 10000, 'ไม่มี': 0 })
-eq(g.map(x => [x.name, x.pct, x.reached]), [['ลงทุน DCA', 50, false], ['เที่ยว', 100, true]], 'unfinished first, zero targets dropped')
 
 // weeks
 eq(weekStart('2026-09-28'), '2026-09-28', 'Mon 28 Sep is its own week start')

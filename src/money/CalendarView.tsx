@@ -13,6 +13,8 @@ const TILE: Record<Tile, string> = {
   none: 'bg-(--t-none) text-(--t-fg)',
   future: 'bg-transparent text-(--t-future)',
 }
+/** "over" is also marked without hue: a thick underline, clear of the glyph bottoms. */
+const OVER = 'underline decoration-2 underline-offset-2'
 
 /** Compact whole-baht amount that fits a ~44px tile: 850, 1.2k, 12k, 1.2M. */
 const short = (v: number) => {
@@ -59,52 +61,56 @@ export default function CalendarView({ money, t }: { money: Money; t: Dict }) {
     setFull(false)
     requestAnimationFrame(() => document.getElementById(`day-${date}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   }
+  // a plain color swatch, not a chip with a number in it: a "12" reads like a real day
+  const legend = (k: 'under' | 'over', count?: number) => (
+    <span key={k} className="flex items-center gap-1">
+      <span aria-hidden className={`inline-block size-3.5 shrink-0 rounded-sm border border-line ${TILE[k]}`} />
+      <span className={k === 'over' ? OVER : ''}>{t.cal.legend[k]}</span>
+      {count !== undefined && count}
+    </span>
+  )
 
   return (
     <div className={full ? 'fixed inset-0 z-50 overflow-y-auto bg-black/70 p-4' : ''} onClick={full ? () => setFull(false) : undefined}>
     <div className={full ? 'mx-auto max-w-xl' : ''} onClick={e => e.stopPropagation()}>
-    <Panel title={t.cal.title} icon={CalendarDays} glow="gold" action={<>
-      {!full && <button className="btn px-2.5 py-1.5 text-xs" onClick={() => setOpen(o => !o)} aria-expanded={open}>{open ? '−' : '+'}</button>}
-      <button className="btn px-2 py-1.5" onClick={() => setFull(!full)} aria-label={full ? t.cal.collapse : t.cal.expand} title={full ? t.cal.collapse : t.cal.expand}>
+    <Panel title={t.cal.title} icon={CalendarDays} action={<>
+      {!full && <button className="btn px-3 text-xs" onClick={() => setOpen(o => !o)} aria-expanded={open}>{open ? '−' : '+'}</button>}
+      <button className="btn px-3" onClick={() => setFull(!full)} aria-label={full ? t.cal.collapse : t.cal.expand} title={full ? t.cal.collapse : t.cal.expand}>
         {full ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
       </button>
     </>}>
       {!open && !full ? (
-        <p className="flex flex-wrap gap-x-3 text-xs text-slate-400">
-          {(['under', 'over'] as const).map(k => (
-            <span key={k} className="flex items-center gap-1"><span className={`inline-block px-1 text-[10px] leading-tight ${TILE[k]} ${k === 'over' ? 'underline' : ''}`}>12</span> {t.cal.legend[k]} {days.filter(d => state(d) === k).length}</span>
-          ))}
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+          {(['under', 'over'] as const).map(k => legend(k, days.filter(d => state(d) === k).length))}
           {nextEv && <span>{nextEv.icon} {+nextEv.date.slice(8)} {t.cal.names[nextEv.id]}</span>}
         </p>
       ) : <>
       <div className="grid grid-cols-7 gap-1 text-center">
-        {t.cal.days.map(d => <div key={d} className="text-[10px] text-slate-500">{d}</div>)}
+        {t.cal.days.map(d => <div key={d} className="text-[10px] text-muted">{d}</div>)}
         {Array.from({ length: pad }, (_, i) => <div key={`x${i}`} />)}
         {shown.map(d => {
           const ev = events.filter(e => e.date === d.date)
           const st = state(d)
           return (
             <button key={d.date} onClick={() => jump(d.date)} title={ev.map(e => t.cal.names[e.id]).join(' · ') || undefined}
-              className={`relative flex aspect-square flex-col items-center justify-center border border-black/30 font-rpg text-xs leading-tight ${TILE[st]} ${d.date === today ? 'outline-2 outline-offset-1 outline-amber-500' : ''}`}>
+              className={`relative flex aspect-square flex-col items-center justify-center rounded-md border border-line font-mono text-xs leading-tight ${TILE[st]} ${d.date === today ? 'outline-2 outline-offset-1 outline-accent' : ''}`}>
               <span>{+d.date.slice(8)}</span>
-              {d.spent > 0 && <span className={`text-[11px] ${st === 'over' ? 'underline' : ''}`}>{short(d.spent)}</span>}
+              {d.spent > 0 && <span className={`text-[11px] ${st === 'over' ? OVER : ''}`}>{short(d.spent)}</span>}
               {ev.length > 0 && <span className="text-[10px] leading-none">{ev.map(e => e.icon).join('')}</span>}
             </button>
           )
         })}
       </div>
       {full && <>
-      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-500">
-        {(['under', 'over'] as const).map(k => (
-          <span key={k} className="flex items-center gap-1"><span className={`inline-block px-1 text-[10px] leading-tight ${TILE[k]} ${k === 'over' ? 'underline' : ''}`}>12</span> {t.cal.legend[k]}</span>
-        ))}
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted">
+        {(['under', 'over'] as const).map(k => legend(k))}
       </div>
       {events.length > 0 && (
-        <ul className="mt-2 space-y-0.5 border-t border-slate-800 pt-2 text-[11px]">
+        <ul className="mt-2 space-y-0.5 border-t border-line pt-2 text-[11px]">
           {events.map(e => (
             <li key={e.id + e.date} className="flex gap-2">
-              <span className="w-10 shrink-0 font-mono text-slate-500">{+e.date.slice(8)}</span>
-              <span className="text-slate-200">{e.icon} {t.cal.names[e.id]}</span>
+              <span className="w-10 shrink-0 font-mono text-muted">{+e.date.slice(8)}</span>
+              <span>{e.icon} {t.cal.names[e.id]}</span>
             </li>
           ))}
         </ul>

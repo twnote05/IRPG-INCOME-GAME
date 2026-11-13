@@ -1,7 +1,7 @@
 # รายรับ-รายจ่าย (เดิม Investor RPG)
 (ผมเป็นแค่คนทั่วไป ที่เบื่อหน่ายกับการจดรายรับรายจ่าย เลยใช้ Claude ช่วยสร้างภาพในหัวผมให้เป็นจริง และอยากแบ่งปันให้ทุกคนครับ)
 
-เว็บแอปจดรายรับ-รายจ่ายส่วนตัว หน้าตาแบบ Retro OS มี 3 หน้า:
+เว็บแอปจดรายรับ-รายจ่ายส่วนตัว หน้าตาเรียบ อ่านตัวเลขง่าย มี 3 หน้า:
 
 - **บันทึก (ใช้ทุกวัน):** จดด่วน `กาแฟ 120` · ปฏิทินของเดือน · รายการแยกตามวัน
 - **แผน:** รายรับ รายจ่ายประจำ หนี้/ผ่อน ถังเงิน และเครื่องคิดค่าน้ำมัน
@@ -347,3 +347,11 @@ React 19 · TypeScript · Vite · Tailwind CSS v4 · Framer Motion · Lucide ico
 ## 2026-11-13 — Task 10 fix round 1
 - `CalendarView.tsx`: over amount underlined (+ legend chip), over requires perDay > 0, `short` not exported.
 - Next steps: final review of the plan.
+
+## 2026-11-13 — Task 11: plain visual style in place of the pixel theme
+- `index.css` rewritten: semantic tokens (`--page --card --field --line --hover --pressed --ink --muted --accent --on-accent --pos --neg --warn`) for light and `[data-theme="dark"]`, exposed to Tailwind via `@theme`. `--s1`…`--s7` kept as-is; `--t-*` kept in both blocks (over/under hues unchanged, none/fg/future re-tinted neutral). Every text-on-surface pair >= 4.5:1 in both themes (throwaway WCAG script, output in `.superpowers/sdd/2026-11-12-simplify-to-money-only/task-11-report.md`). Only `@keyframes shake` left.
+- `ui.tsx`: `Panel` renders its own quiet heading; `TitleBar`/`WinControls` deleted; `Bar` keeps its props + `role="progressbar"` and uses a CSS transition. **framer-motion dropped** from `package.json`.
+- Deferred fixes: PlanView spent-state gets △/▲ + `sr-only` word (`stWarn`/`stOver`); calendar over-marker underline thickened with offset and the legend chip is a real swatch; `BarsV` renders nothing for a zero future month; one wording (`perDayLeft`) on log + summary (`sumToday` dropped); empty future month says `futureMonth`; the quick-add hint left the sticky block (164px -> 106px); recurring-row name gets a full-width line (109px -> 274px).
+- Deleted (grep-verified unused): i18n `whereMonth vsPlan noteOver noteWarn nearCount allOk debtTitle noInstallments debtRow paidOff bucketsAll` (+`sumToday`), `logic.vsPlan`, `logic.goalProgress`, `useMoney.goalList`, `charts.PX`/`PixelRing`, pixel font links in `index.html`.
+- Checked in a real browser at 375x812, Thai+light and English+dark, all four screens: no target under 24px, daily controls 44px+, no horizontal scroll, no console errors, no white flash on a dark reload.
+- Next steps: final review of the simplify-to-money-only plan.
