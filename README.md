@@ -343,3 +343,7 @@ React 19 · TypeScript · Vite · Tailwind CSS v4 · Framer Motion · Lucide ico
 - `CalendarView.tsx`: tiles are `over | under | none | future` from `dayTotals` vs `spendable().perDay`; each spent day shows its total (850 / 1.2k / 12k). Legend = 2 states. `index.css`: `--t-*` tile colours per theme (contrast >= 5.9:1). `i18n.ts`: legend `{under, over}` both langs.
 - Removed `dayLog`, `validRest` (+ checks), `rest`/`setRest`/`restToday` from `useMoney` (export no longer carries `rest`; import ignores it). Key `investor-rpg:money.rest` kept, never read/written.
 - Next steps: final review of the plan.
+
+## 2026-11-13 — Task 10 fix round 1
+- `CalendarView.tsx`: over amount underlined (+ legend chip), over requires perDay > 0, `short` not exported.
+- Next steps: final review of the plan.

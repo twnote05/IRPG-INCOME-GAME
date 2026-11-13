@@ -15,7 +15,7 @@ const TILE: Record<Tile, string> = {
 }
 
 /** Compact whole-baht amount that fits a ~44px tile: 850, 1.2k, 12k, 1.2M. */
-export const short = (v: number) => {
+const short = (v: number) => {
   const n = Math.round(v)
   if (n < 1000) return String(n)
   if (n < 10000) return `${+(n / 1000).toFixed(1)}k`
@@ -52,8 +52,8 @@ export default function CalendarView({ money, t }: { money: Money; t: Dict }) {
   const pad = full ? lead : Math.max(0, -w0)
 
   const state = (d: typeof days[number]): Tile =>
-    // No plan = no daily figure to be over: a spent day is 'under'. A plan with nothing left (perDay 0) makes every spent day over, which is true.
-    d.date > today ? 'future' : !d.spent ? 'none' : sp.hasPlan && d.spent > sp.perDay ? 'over' : 'under'
+    // No plan, or a plan with nothing left (perDay 0): no daily figure to be over, so a spent day is 'under' (month-level overspend shows on the today card).
+    d.date > today ? 'future' : !d.spent ? 'none' : sp.hasPlan && sp.perDay > 0 && d.spent > sp.perDay ? 'over' : 'under'
   const nextEv = events.find(e => e.date >= today)
   const jump = (date: string) => {
     setFull(false)
@@ -72,7 +72,7 @@ export default function CalendarView({ money, t }: { money: Money; t: Dict }) {
       {!open && !full ? (
         <p className="flex flex-wrap gap-x-3 text-xs text-slate-400">
           {(['under', 'over'] as const).map(k => (
-            <span key={k} className="flex items-center gap-1"><span className={`inline-block size-2.5 ${TILE[k]}`} /> {t.cal.legend[k]} {days.filter(d => state(d) === k).length}</span>
+            <span key={k} className="flex items-center gap-1"><span className={`inline-block px-1 text-[10px] leading-tight ${TILE[k]} ${k === 'over' ? 'underline' : ''}`}>12</span> {t.cal.legend[k]} {days.filter(d => state(d) === k).length}</span>
           ))}
           {nextEv && <span>{nextEv.icon} {+nextEv.date.slice(8)} {t.cal.names[nextEv.id]}</span>}
         </p>
@@ -87,7 +87,7 @@ export default function CalendarView({ money, t }: { money: Money; t: Dict }) {
             <button key={d.date} onClick={() => jump(d.date)} title={ev.map(e => t.cal.names[e.id]).join(' · ') || undefined}
               className={`relative flex aspect-square flex-col items-center justify-center border border-black/30 font-rpg text-xs leading-tight ${TILE[st]} ${d.date === today ? 'outline-2 outline-offset-1 outline-amber-500' : ''}`}>
               <span>{+d.date.slice(8)}</span>
-              {d.spent > 0 && <span className="text-[11px]">{short(d.spent)}</span>}
+              {d.spent > 0 && <span className={`text-[11px] ${st === 'over' ? 'underline' : ''}`}>{short(d.spent)}</span>}
               {ev.length > 0 && <span className="text-[10px] leading-none">{ev.map(e => e.icon).join('')}</span>}
             </button>
           )
@@ -96,7 +96,7 @@ export default function CalendarView({ money, t }: { money: Money; t: Dict }) {
       {full && <>
       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-500">
         {(['under', 'over'] as const).map(k => (
-          <span key={k} className="flex items-center gap-1"><span className={`inline-block size-2.5 ${TILE[k]}`} /> {t.cal.legend[k]}</span>
+          <span key={k} className="flex items-center gap-1"><span className={`inline-block px-1 text-[10px] leading-tight ${TILE[k]} ${k === 'over' ? 'underline' : ''}`}>12</span> {t.cal.legend[k]}</span>
         ))}
       </div>
       {events.length > 0 && (
