@@ -50,11 +50,11 @@ export default function App() {
           </h1>
           <div className="ml-auto flex shrink-0 items-center gap-1.5">
             <button onClick={() => setPrefs(p => ({ ...p, lang: p.lang === 'th' ? 'en' : 'th' }))}
-              className="btn px-2.5 text-xs" aria-label={t.switchLangAria} title={t.switchLangAria}>
+              className="btn min-w-11 px-2.5 text-xs" aria-label={t.switchLangAria} title={t.switchLangAria}>
               <Languages size={16} /> <span className="max-sm:hidden">{t.switchLang}</span>
             </button>
             <button onClick={() => setPrefs(p => ({ ...p, theme: p.theme === 'dark' ? 'light' : 'dark' }))}
-              className="btn px-3" aria-label={dark ? t.lightMode : t.darkMode} title={dark ? t.lightMode : t.darkMode}>
+              className="btn min-w-11 px-3" aria-label={dark ? t.lightMode : t.darkMode} title={dark ? t.lightMode : t.darkMode}>
               {dark ? <Sun size={16} /> : <Moon size={16} />}
             </button>
           </div>

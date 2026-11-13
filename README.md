@@ -355,3 +355,10 @@ React 19 · TypeScript · Vite · Tailwind CSS v4 · Framer Motion · Lucide ico
 - Deleted (grep-verified unused): i18n `whereMonth vsPlan noteOver noteWarn nearCount allOk debtTitle noInstallments debtRow paidOff bucketsAll` (+`sumToday`), `logic.vsPlan`, `logic.goalProgress`, `useMoney.goalList`, `charts.PX`/`PixelRing`, pixel font links in `index.html`.
 - Checked in a real browser at 375x812, Thai+light and English+dark, all four screens: no target under 24px, daily controls 44px+, no horizontal scroll, no console errors, no white flash on a dark reload.
 - Next steps: final review of the simplify-to-money-only plan.
+
+## 2026-11-13 — Task 11 fix round 1
+- `ui.tsx`: deleted the dead `glow` prop and `type Glow` (`'gold' | 'mana' | 'emerald' | 'ruby'` was the last RPG vocabulary left); no call site passed one.
+- 44px minimum where a thumb lands: `min-w-11` on the header language and theme buttons (38px / 42px before), the calendar `+`/`−` (32px) and, same rows, the calendar full-screen toggle and the fuel `+`. Plan account notes (112x28) and year-chart columns (~25px) left alone — above the 24px floor.
+- Confirmed by measurement: calendar week tiles are 43.00x43.00px at 375px (41.86 in the full-screen overlay), and the contrast table is in commit 3a16bc5's body.
+- Next steps: final review of the simplify-to-money-only plan.
+

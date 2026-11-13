@@ -1,12 +1,9 @@
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 
-/** Kept so callers don't change shape; the heading no longer varies by color. */
-export type Glow = 'gold' | 'mana' | 'emerald' | 'ruby'
-
 /** A card: quiet heading row (icon, title, optional action) over the body. */
 export function Panel({ title, icon: Icon, action, className = '', children }: {
-  title: string; icon: LucideIcon; glow?: Glow; action?: ReactNode; className?: string; children: ReactNode
+  title: string; icon: LucideIcon; action?: ReactNode; className?: string; children: ReactNode
 }) {
   return (
     <section className={`rounded-xl border border-line bg-card ${className}`}>
