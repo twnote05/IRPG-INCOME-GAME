@@ -334,3 +334,7 @@ React 19 · TypeScript · Vite · Tailwind CSS v4 · Framer Motion · Lucide ico
 - `logic.ts`: `envTotals` ties sort by label; `dailyBudget` deleted (LogView now uses `spendable`). `logic.check.ts` updated.
 - `i18n.ts`: sumToday, setPlanHint, sumWeek, weekTotal, weekPeak, weekAvg, sumMonth, biggest, smallest, sumYear, nowMark (en + th).
 - Next steps: Task 10 onward per plan; old debt/bucket summary panels were dropped (i18n keys debtTitle/bucketsAll etc. now unused).
+
+## 2026-11-13 — Task 9 fix round 1
+- `charts.tsx`: future-month bars dashed outline instead of opacity-60 (contrast). `i18n.ts`: weekAvg label says "so far" (en+th). `useMoney.ts`: month picker always offers next month.
+- Next steps: Task 10 onward per plan.

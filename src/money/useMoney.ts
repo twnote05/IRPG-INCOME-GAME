@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   DEFAULT_FUEL, blankMonth, carryMonth, evalAmount, fuelCost, mergeBackup, mergeIntoRemote, monthOf, norm,
-  OTHER, paidEntryId, bucketTotals, goalProgress, parseQuick, todayISO, prevMonth, thisMonth, uid, validGasUrl, validMonth, withIds,
+  OTHER, paidEntryId, bucketTotals, goalProgress, parseQuick, todayISO, nextMonth, prevMonth, thisMonth, uid, validGasUrl, validMonth, withIds,
   type Bucket, type Fuel, type MoneyDb, type MonthPlan, type Row,
 } from './logic'
 import type { Payday } from '../lib/calendar'
@@ -277,7 +277,7 @@ export function useMoney() {
     return n
   })
 
-  const months = useMemo(() => [...new Set([...Object.keys(db.months), ...db.entries.map(monthOf), cur, thisMonth()])]
+  const months = useMemo(() => [...new Set([...Object.keys(db.months), ...db.entries.map(monthOf), cur, thisMonth(), nextMonth(thisMonth())])]
     .filter(validMonth).sort().reverse(), [db, cur])
   const restToday = () => setRest(r => r.includes(todayISO()) ? r : [...r, todayISO()])
   const saved = useMemo(() => bucketTotals(db), [db])
