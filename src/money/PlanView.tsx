@@ -1,9 +1,9 @@
-import { CalendarRange, Copy, Fuel, PiggyBank, Plus, Receipt, X } from 'lucide-react'
+import { CalendarRange, Check, Copy, Fuel, PiggyBank, Plus, Receipt, X } from 'lucide-react'
 import { useState } from 'react'
 import type { Dict, Lang } from '../lib/i18n'
 import { Bar, Panel, inputCls } from '../components/ui'
 import AmountInput from './AmountInput'
-import { DEFAULT_FUEL, alloc, budgetState, byAccount, fuelCost, isDebt, monthOf, payoffMonth, periodN, prevMonth, sum, type Fuel as FuelT } from './logic'
+import { DEFAULT_FUEL, alloc, budgetState, byAccount, fuelCost, isDebt, isPaid, paidNames, monthOf, payoffMonth, periodN, prevMonth, sum, type Fuel as FuelT } from './logic'
 import { fmt, fmt0, monthLabel } from './fmt'
 import type { Money } from './useMoney'
 
@@ -18,6 +18,21 @@ export default function PlanView({ money, t, lang }: { money: Money; t: Dict; la
   const totPct = sum(m.buckets, b => b.pct)
   const accts = byAccount(m.plan)
   const prev = prevMonth(cur)
+  const paidSet = paidNames(db, cur)
+  const named = m.plan.filter(r => r.name.trim())
+  const nPaid = named.filter(r => isPaid(r, paidSet)).length
+  const unpaidSum = sum(named.filter(r => !isPaid(r, paidSet)))
+  const PayBtn = ({ r }: { r: typeof m.plan[number] }) => {
+    if (!r.name.trim()) return null
+    const on = isPaid(r, paidSet)
+    return (
+      <button className={`btn flex min-h-11 min-w-11 shrink-0 items-center gap-1 text-xs ${on ? 'btn-pressed' : ''}`} aria-pressed={on}
+        onClick={() => (on ? money.unpayRow(r) : money.payRow(r))}>
+        {on && <Check size={14} />} {on ? t.money.paidTick : t.money.markPaid}
+      </button>
+    )
+  }
+  const dim = (r: typeof m.plan[number]) => (isPaid(r, paidSet) ? 'opacity-50' : '')
 
   const Del = ({ onClick }: { onClick: () => void }) =>
     <button className="shrink-0 p-1 text-slate-500 hover:text-red-700" aria-label={t.money.del} onClick={onClick}><X size={15} /></button>
@@ -44,13 +59,15 @@ export default function PlanView({ money, t, lang }: { money: Money; t: Dict; la
         <Add label={t.money.addIncome} onClick={() => money.addRow('income')} />
       </Panel>
 
+      {named.length > 0 && <p className="text-center text-xs text-slate-400" data-testid="tally">{t.money.paidTally(nPaid, named.length, fmt0(unpaidSum))}</p>}
+
       <Panel title={t.money.recurring} icon={Receipt} glow="ruby">
         {m.plan.filter(r => !isDebt(r)).length === 0 && <p className="text-xs text-slate-500">{t.money.noItems}</p>}
         {m.plan.filter(r => !isDebt(r)).map(r => {
           const act = spentIn(r.name)
           return (
             // one grid so name / amount / spent / ✕ share a line; the account note sits under the name
-            <div key={r.id} className="grid grid-cols-[minmax(0,1fr)_7rem_3.5rem_auto] items-center gap-x-2 border-b border-slate-800 py-1.5 last:border-0">
+            <div key={r.id} className={`grid grid-cols-[minmax(0,1fr)_7rem_3.5rem_auto] items-center gap-x-2 border-b border-slate-800 py-1.5 last:border-0 ${dim(r)}`}>
               <input className={`${inputCls} min-w-0`} value={r.name} placeholder={t.money.itemName}
                 onChange={e => money.updateRow('plan', r.id, { name: e.target.value })} />
               <div className="min-w-0"><AmountInput value={r.amount} onCommit={v => money.updateRow('plan', r.id, { amount: v ?? 0 })} ariaLabel={t.money.amount} /></div>
@@ -58,8 +75,11 @@ export default function PlanView({ money, t, lang }: { money: Money; t: Dict; la
                 {act ? fmt0(act) : '–'}
               </span>
               <Del onClick={() => money.delRow('plan', r.id)} />
-              <input className="col-span-4 mt-0.5 w-24 bg-transparent px-1 text-[11px] text-slate-500 outline-none placeholder:text-slate-600 focus:text-slate-200"
-                value={r.acct ?? ''} placeholder={t.money.acct} aria-label={t.money.acct} onChange={e => money.updateRow('plan', r.id, { acct: e.target.value || undefined })} />
+              <div className="col-span-4 mt-0.5 flex items-center justify-between gap-2">
+                <input className="w-24 min-w-0 bg-transparent px-1 text-[11px] text-slate-500 outline-none placeholder:text-slate-600 focus:text-slate-200"
+                  value={r.acct ?? ''} placeholder={t.money.acct} aria-label={t.money.acct} onChange={e => money.updateRow('plan', r.id, { acct: e.target.value || undefined })} />
+                <PayBtn r={r} />
+              </div>
             </div>
           )
         })}
@@ -74,7 +94,7 @@ export default function PlanView({ money, t, lang }: { money: Money; t: Dict; la
             const paid = n * (+r.amount || 0), remain = leftN * (+r.amount || 0), total = +(r.total ?? 0) || 0
             const end = payoffMonth(r, cur)
             return (
-              <div key={r.id} className="sunken p-2.5">
+              <div key={r.id} className={`sunken p-2.5 ${dim(r)}`}>
                 <div className="flex items-center gap-2">
                   <input className={`${inputCls} min-w-0 flex-1 font-semibold`} value={r.name} placeholder={t.money.debtName}
                     onChange={e => money.updateRow('plan', r.id, { name: e.target.value })} />
@@ -92,8 +112,11 @@ export default function PlanView({ money, t, lang }: { money: Money; t: Dict; la
                   <span>{leftN && end ? t.money.remain(leftN, fmt0(remain), monthLabel(end, lang)) : <b className="text-emerald-700">{t.money.done}</b>}</span>
                 </div>
                 {total > 0 && <div className="mt-1.5"><Bar value={paid} max={total} color="bg-blue-600" className="h-1.5" /></div>}
-                <input className="mt-2 w-full border border-dashed border-slate-700 bg-transparent px-1.5 py-1 text-[11px] text-slate-400 outline-none"
-                  value={r.acct ?? ''} placeholder={t.money.acct} onChange={e => money.updateRow('plan', r.id, { acct: e.target.value || undefined })} />
+                <div className="mt-2 flex items-center gap-2">
+                  <input className="min-w-0 flex-1 border border-dashed border-slate-700 bg-transparent px-1.5 py-1 text-[11px] text-slate-400 outline-none"
+                    value={r.acct ?? ''} placeholder={t.money.acct} onChange={e => money.updateRow('plan', r.id, { acct: e.target.value || undefined })} />
+                  <PayBtn r={r} />
+                </div>
               </div>
             )
           })}

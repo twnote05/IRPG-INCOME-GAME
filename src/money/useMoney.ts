@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   DEFAULT_FUEL, blankMonth, carryMonth, evalAmount, fuelCost, mergeBackup, mergeIntoRemote, monthOf, norm,
-  OTHER, bucketTotals, goalProgress, parseQuick, todayISO, prevMonth, thisMonth, uid, validGasUrl, validMonth, withIds,
+  OTHER, paidEntryId, bucketTotals, goalProgress, parseQuick, todayISO, prevMonth, thisMonth, uid, validGasUrl, validMonth, withIds,
   type Bucket, type Fuel, type MoneyDb, type MonthPlan, type Row,
 } from './logic'
 import type { Payday } from '../lib/calendar'
@@ -212,6 +212,20 @@ export function useMoney() {
     mutate(d => { d.entries = d.entries.filter(e => e.id !== id) })
   }
 
+  // Paying logs an expense named after the row and nothing else: n/of/total belong to carryMonth().
+  // Paid state is derived from entries, so unpay is just the undoable delete.
+  const payRow = (row: Row) => {
+    if (!row.name.trim()) return
+    const entry = { id: uid(), date: entryDate, type: 'out' as const, env: row.name, note: row.name, amount: row.amount }
+    setDb(prev => ({ ...prev, entries: [entry, ...prev.entries] }))
+    markDirty()
+    showMonthOf(entryDate)
+  }
+  const unpayRow = (row: Row) => {
+    const id = paidEntryId(db, cur, row.name)
+    if (id) delEntry(id)
+  }
+
   // ---------- plan ----------
   const updateRow = (kind: PlanKind, id: string, patch: Partial<Row & Bucket>) => mutate((_, m) => {
     const list = m[kind] as (Row | Bucket)[]
@@ -272,7 +286,7 @@ export function useMoney() {
   return {
     db, cur, setCur, months, month, planNames, learned, goals, goalList, saved, setGoal, rest, restToday, payday, setPayday,
     gas, sync, connect, disconnect, syncNow: () => (read(K.dirty, null) && canPush() ? pushUp() : pullDown()),
-    entryDate, setEntryDate, setDate, addQuick, setEnv, setAmount, delEntry, undo, undoDelete,
+    entryDate, setEntryDate, setDate, addQuick, setEnv, setAmount, delEntry, payRow, unpayRow, undo, undoDelete,
     updateRow, addRow, delRow, addDebt, carry, setFuel, applyFuel,
     exportJson, exportCsv, importJson, unlearn, clearLearned, evalAmount,
   }

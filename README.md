@@ -321,3 +321,9 @@ React 19 · TypeScript · Vite · Tailwind CSS v4 · Framer Motion · Lucide ico
 
 ### Next steps
 - ตรวจปุ่มวันที่ในแถวบน Safari/Firefox (ซ่อนข้อความด้วย `::-webkit-datetime-edit` เฉพาะ Chromium)
+
+## 2026-11-13 — Task 7: จ่ายแล้ว on plan rows
+- `useMoney.ts`: `payRow` (logs out entry, note/env = row name, amount = row amount, on `entryDate`) and `unpayRow` (undoable delete of `paidEntryId`). Never touch `n`/`of`/`total`; paid state derived from entries.
+- `PlanView.tsx`: 44px pay button on every named recurring/debt row, paid rows dimmed, header tally; blank-named rows show no button.
+- `i18n.ts`: `markPaid`, `paidTick`, `paidTally` in both dictionaries.
+- Next steps: Task 8 onward per plan.
