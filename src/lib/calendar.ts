@@ -49,7 +49,7 @@ export function paydayOf(month: string, pay: Payday = 'last') {
   return iso(d)
 }
 
-export function eventsOfYear(year: number, pay: Payday = 'last'): CalEvent[] {
+function eventsOfYear(year: number, pay: Payday = 'last'): CalEvent[] {
   const out: CalEvent[] = FIXED.map(f => ({ id: f.id, date: `${year}-${f.md}`, kind: f.kind, icon: f.icon }))
   if (CNY[year]) out.push({ id: 'cny', date: `${year}-${CNY[year]}`, kind: 'holiday', icon: '🧧' })
   if (LOY_KRATHONG[year]) out.push({ id: 'loykrathong', date: `${year}-${LOY_KRATHONG[year]}`, kind: 'holiday', icon: '🪷' })
@@ -57,11 +57,3 @@ export function eventsOfYear(year: number, pay: Payday = 'last'): CalEvent[] {
   return out.sort((a, b) => a.date.localeCompare(b.date))
 }
 export const eventsInMonth = (month: string, pay?: Payday) => eventsOfYear(+month.slice(0, 4), pay).filter(e => e.date.startsWith(month))
-
-/** Soonest events from today (today included), up to `days` ahead. */
-export function upcoming(today: string, days = 45, pay?: Payday) {
-  const y = +today.slice(0, 4)
-  return [...eventsOfYear(y, pay), ...eventsOfYear(y + 1, pay)]
-    .map(e => ({ ...e, inDays: daysBetween(today, e.date) }))
-    .filter(e => e.inDays >= 0 && e.inDays <= days)
-}

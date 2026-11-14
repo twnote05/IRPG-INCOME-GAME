@@ -173,6 +173,31 @@ eq(spendable(BARE, '2026-03', '2026-03-10').perDay, 0, 'never a negative or infi
 const LOGGED: MoneyDb = { months: { '2026-04': { income: [], plan: [], buckets: [] } },
   entries: [{ id: 'd', date: '2026-04-01', type: 'in', env: 'รายรับ', note: 'เงินเดือน', amount: 20000 }] }
 eq(spendable(LOGGED, '2026-04', '2026-04-10').income, 20000, 'falls back to logged income')
+// Any edit (deleting an entry, fixing an amount) creates the viewed month from blankMonth(), which
+// carries one 0-baht income row. Falling back on the row count instead of the amount read that as
+// "income 0" and painted an imported month red. Fall back on the amount.
+const PHANTOM: MoneyDb = {
+  months: { '2026-05': { income: [{ id: 'z', name: 'เงินเดือน', amount: 0 }], plan: [], buckets: [] } },
+  entries: [
+    { id: 'p2', date: '2026-05-09', type: 'out', env: 'อื่นๆ', note: 'กาแฟ', amount: 9208 },
+    { id: 'p1', date: '2026-05-01', type: 'in', env: 'รายรับ', note: 'เงินเดือน', amount: 45000 },
+  ],
+}
+eq(spendable(PHANTOM, '2026-05', '2026-05-12').income, 45000, 'a 0-baht income row falls back to logged income')
+eq(spendable(PHANTOM, '2026-05', '2026-05-12').left, 35792, 'a blank month never turns an imported month over-budget')
+// A bill logged twice: only the entry that marks the row paid is the one the plan stands in for.
+// Same fixture and same numbers as the digest assertion in gas/code.check.mjs — keep them together.
+const TWICE: MoneyDb = {
+  months: { '2026-11': { income: [{ id: 'i', name: 'เงินเดือน', amount: 45000 }],
+    plan: [{ id: 'p', name: 'ค่าไฟ', amount: 1000 }], buckets: [] } },
+  entries: [
+    { id: 't3', date: '2026-11-13', type: 'out', env: 'อาหาร', note: 'ข้าว', amount: 200 },
+    { id: 't2', date: '2026-11-03', type: 'out', env: 'ค่าไฟ', note: 'ค่าไฟ', amount: 1000 }, // tapped จ่ายแล้ว
+    { id: 't1', date: '2026-11-02', type: 'out', env: 'ค่าไฟ', note: 'ค่าไฟ', amount: 9000 }, // typed by hand
+  ],
+}
+eq(spendable(TWICE, '2026-11', '2026-11-12').discretionary, 9200, 'a second entry with a paid name is still spending')
+eq(spendable(TWICE, '2026-11', '2026-11-12').left, 34800, '45000 − 1000 − 9200')
 // paidNames: normalised, amount-irrelevant, blank rows never match
 eq([...paidNames(SP, '2026-11')], ['ค่าบ้าน'], 'only the entry naming a plan row counts')
 

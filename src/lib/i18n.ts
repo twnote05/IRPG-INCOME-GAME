@@ -99,7 +99,7 @@ const en = {
     nowMark: 'now',
 
     connectSheet: 'Google Sheet',
-    connectIntro: 'Use the same Apps Script URL and TOKEN as your income/expense app — both apps share one sheet.',
+    connectIntro: 'Paste the Apps Script web-app URL and the TOKEN from your own Google Sheet; this app reads and writes that one sheet.',
     urlLabel: 'Web app URL (ends with /exec)',
     tokenLabel: 'TOKEN (the Script property)',
     connect: 'Connect',
@@ -250,7 +250,7 @@ const th: Dict = {
     nowMark: 'ตอนนี้',
 
     connectSheet: 'Google Sheet',
-    connectIntro: 'ใช้ URL และ TOKEN ชุดเดียวกับแอปรายรับรายจ่าย — ทั้งสองแอปใช้ชีตเดียวกัน',
+    connectIntro: 'วาง URL ของ Apps Script web app และ TOKEN จากชีตของคุณเอง — แอปนี้อ่านและเขียนชีตนั้นชีตเดียว',
     urlLabel: 'URL ของ Web app (ลงท้ายด้วย /exec)',
     tokenLabel: 'TOKEN (Script property ชื่อ TOKEN)',
     connect: 'เชื่อมต่อ',

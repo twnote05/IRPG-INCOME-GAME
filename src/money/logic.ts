@@ -163,10 +163,14 @@ export function spendable(db: MoneyDb, month: string, today: string): Spendable 
   const m = db.months[month]
   const ins = m?.income ?? []
   const inMonth = db.entries.filter(e => monthOf(e) === month)
-  const income = ins.length ? sum(ins) : sum(inMonth.filter(e => e.type === 'in'))
+  // Fall back on the amount, not on ins.length: a month created by any edit carries one 0-baht
+  // income row, and reading that as "income 0" turns an imported month red for no reason.
+  const income = sum(ins) || sum(inMonth.filter(e => e.type === 'in'))
   const committed = sum(m?.plan ?? [])
-  const paid = paidNames(db, month)
-  const discretionary = sum(inMonth.filter(e => e.type === 'out' && !paid.has(norm(e.note))))
+  // A paid bill is already in `committed`, but only via the one entry that marks the row paid —
+  // the same one unpayRow deletes. A second entry with that name is real extra spending.
+  const markers = new Set([...paidNames(db, month)].map(n => paidEntryId(db, month, n)))
+  const discretionary = sum(inMonth.filter(e => e.type === 'out' && !markers.has(e.id)))
   const left = income - committed - discretionary
   const dim = daysInMonth(month)
   const daysLeft = today.slice(0, 7) === month ? Math.max(1, dim - +today.slice(8, 10) + 1) : dim
@@ -222,7 +226,9 @@ export function withIds(remote: MoneyDb): MoneyDb {
       ...(m.fuel ? { fuel: m.fuel } : {}),
     }
   }
-  return { months, entries: (remote.entries || []).map(e => ({ ...e, id: String(e.id) })) }
+  // Newest-first is an invariant the rest of the file relies on (see paidEntryId); the sheet keeps
+  // its own order and appends quick-adds at the end, so sort here too, not only in the merges.
+  return { months, entries: (remote.entries || []).map(e => ({ ...e, id: String(e.id) })).sort((a, b) => b.date.localeCompare(a.date)) }
 }
 
 /**

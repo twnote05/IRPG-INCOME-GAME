@@ -16,7 +16,7 @@ const ctx = { JSON, Object, String, Number, Array, Date, Math,
   PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] ?? null, setProperty: (k, v) => { props[k] = v } }) },
   SpreadsheetApp: { getActiveSpreadsheet: () => ({ getSheetByName: n => sheets[n], insertSheet: n => (sheets[n] = mkSheet(n)) }), openById() { throw new Error('should use active sheet') } },
   ContentService: { createTextOutput: s => ({ s, setMimeType() { return this } }), MimeType: { JSON: 'json' } },
-  Utilities: { formatDate: (d, tz, f) => d.toISOString().slice(0, f === 'yyyy-MM' ? 7 : 10), getUuid: () => 'u' + Object.keys(sheets).length + Math.random() } }
+  Utilities: { formatDate: (d, tz, f) => f === 'd' ? String(d.getUTCDate()) : d.toISOString().slice(0, f === 'yyyy-MM' ? 7 : 10), getUuid: () => 'u' + Object.keys(sheets).length + Math.random() } }
 vm.createContext(ctx); vm.runInContext(code, ctx)
 const call = body => JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify({ token: 't', ...body }) } }).s)
 
@@ -45,3 +45,34 @@ assert.equal(call({ action: 'save', doc: { ...doc, entries: doc.entries } }).ok,
 assert.equal(call({ action: 'load' }).entries.length, 2, 'save keeps the quick entry the app did not know about')
 assert.deepEqual(sheets.game.getDataRange().getValues(), [['part', 'json'], [0, '~sentinel']], 'existing game tab left untouched')
 console.log('gas money sync ok: save/load/quick, month keys stay strings')
+
+// --- the daily digest must use the app's own arithmetic: income − committed − discretionary ---
+// Same fixture and same numbers as the TWICE block in src/money/logic.check.ts. If one side drifts
+// (e.g. back to planned − spent), this fails: the 05:00 LINE push would contradict the home screen.
+delete sheets.entries; delete sheets.plan           // start from an empty sheet, not the rows above
+const dg = {
+  months: { '2026-11': { income: [{ name: 'เงินเดือน', amount: 45000 }],
+    plan: [{ name: 'ค่าไฟ', amount: 1000 }], buckets: [] } },
+  entries: [
+    { id: 't3', date: '2026-11-13', type: 'out', env: 'อาหาร', note: 'ข้าว', amount: 200 },
+    { id: 't2', date: '2026-11-03', type: 'out', env: 'ค่าไฟ', note: 'ค่าไฟ', amount: 1000 }, // tapped จ่ายแล้ว
+    { id: 't1', date: '2026-11-02', type: 'out', env: 'ค่าไฟ', note: 'ค่าไฟ', amount: 9000 }, // typed by hand
+  ],
+}
+assert.ok(call({ action: 'save', doc: dg }).ok)
+const dig = ctx.dailyDigest(new Date('2026-11-14T03:00:00Z'))
+assert.equal(dig.income, 45000, 'income comes from the plan rows')
+assert.equal(dig.committed, 1000, 'bills are committed for the whole month, paid or not')
+assert.equal(dig.discretionary, 9200, 'only ONE ค่าไฟ entry is the paid marker; the second is real spending')
+assert.equal(dig.left, 34800, 'left = 45000 − 1000 − 9200, exactly what spendable() returns')
+assert.equal(dig.spentMonth, 10200, 'spent still counts every out entry')
+assert.equal(dig.spentYesterday, 200, 'yesterday')
+assert.equal(dig.daysLeft, 17, '14..30 November')
+assert.match(ctx.digestText(dig), /วันนี้ใช้ได้ 2,047 บาท/, 'the LINE text carries that same figure')
+// a 0-baht income row must not zero the income (blankMonth() always writes one)
+delete sheets.entries; delete sheets.plan
+assert.ok(call({ action: 'save', doc: { months: { '2026-11': { income: [{ name: 'เงินเดือน', amount: 0 }], plan: [], buckets: [] } },
+  entries: [{ id: 'q1', date: '2026-11-02', type: 'in', env: 'รายรับ', note: 'เงินเดือน', amount: 45000 },
+            { id: 'q2', date: '2026-11-09', type: 'out', env: 'อื่นๆ', note: 'กาแฟ', amount: 9208 }] } }).ok)
+assert.equal(ctx.dailyDigest(new Date('2026-11-14T03:00:00Z')).left, 35792, 'a 0-baht income row falls back to logged income')
+console.log('gas digest ok: same income − committed − discretionary as the app')

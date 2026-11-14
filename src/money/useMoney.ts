@@ -214,10 +214,14 @@ export function useMoney() {
   // Paid state is derived from entries, so unpay is just the undoable delete.
   const payRow = (row: Row) => {
     if (!row.name.trim()) return
-    const entry = { id: uid(), date: entryDate, type: 'out' as const, env: row.name, note: row.name, amount: row.amount }
+    // The row belongs to the viewed month, so its payment must land there. Carrying the plan forward
+    // and paying down the list would otherwise file every bill under whatever month entryDate holds
+    // and drag the picker along with it. The date only wins while it is already inside `cur`.
+    const date = monthOf({ date: entryDate }) === cur ? entryDate : `${cur}-01`
+    const entry = { id: uid(), date, type: 'out' as const, env: row.name, note: row.name, amount: row.amount }
     setDb(prev => ({ ...prev, entries: [entry, ...prev.entries] }))
     markDirty()
-    showMonthOf(entryDate)
+    showMonthOf(date) // a no-op now — kept so "the date wins, the view follows" still reads true here
   }
   const unpayRow = (row: Row) => {
     const id = paidEntryId(db, cur, row.name)
