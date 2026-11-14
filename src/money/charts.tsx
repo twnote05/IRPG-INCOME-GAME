@@ -37,7 +37,7 @@ const compact = (n: number) => (n >= 10000 ? `${Math.round(n / 1000)}k` : n >= 1
 
 /**
  * Vertical bars for 7 days and 12 months. Every bar prints its value; with 8+ bars the value is
- * abbreviated (12.3k) so it fits a ~27px column. `onPick` makes each bar a full-height button
+ * abbreviated (13k, 3.3k) so it fits a ~27px column. `onPick` makes each bar a full-height button
  * (name = label + value). `now` adds a triangle under the label, `dim` draws it as a dashed outline, `sel` outlines it.
  * A zero bar draws nothing at all — a 2px dashed outline with no height is a stub, not a value.
  */

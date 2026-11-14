@@ -240,7 +240,7 @@ React 19 · TypeScript · Vite · Tailwind CSS v4 · Lucide icons · Google Apps
 ### 2026-11-12 ถึง 2026-11-14 — ตัดเกมและฝั่งลงทุน เหลือแอปรายรับ-รายจ่าย 3 แท็บ
 
 **ลบ**
-- ชั้นเกม (EXP ทอง เควสต์ บอส ตัวละคร) และชั้นลงทุน (พอร์ต ราคาสด จำลองทบต้น) ทั้งหมด รวมถึง `server/` (เซิร์ฟเวอร์ราคา) `เปิดโปรแกรม.bat` `tools/globe_gen.py` `src/components/*` (เหลือ `ui.tsx`) และไฟล์ `src/lib` ฝั่งเกม · ธีม pixel (ฟอนต์ pixel, `PixelRing`) · `framer-motion` ออกจาก `package.json`
+- ชั้นเกม (EXP ทอง เควสต์ บอส ตัวละคร) และชั้นลงทุน (พอร์ต ราคาสด จำลองทบต้น) ทั้งหมด รวมถึง `server/` (เซิร์ฟเวอร์ราคา) `เปิดโปรแกรม.bat` `tools/globe_gen.py` `tools/hero_gen.py` `tools/scene_gen.py` `src/components/*` (เหลือ `ui.tsx`) และไฟล์ `src/lib` ฝั่งเกม · ธีม pixel (ฟอนต์ pixel, `PixelRing`) · `framer-motion` ออกจาก `package.json`
 - `gas/Code.gs`: action `gameLoad`/`gameSave` ออก (`doPost` เหลือ `load` `save` `quick`) แท็บ `game` ในชีตของผู้ใช้ปล่อยไว้ไม่แตะ · `gas/code.check.mjs` เขียนใหม่
 - `logic.ts`/`useMoney.ts`: `dayLog` `validRest` `rest` `dailyBudget` `vsPlan` `goalProgress` `goalList` ฯลฯ · คีย์ `investor-rpg:money.rest` ยังอยู่ในเครื่องแต่ไม่มีใครอ่าน/เขียน · `i18n.ts` เหลือเฉพาะ `money` `cal` และหัวเรื่อง
 
