@@ -71,7 +71,11 @@ export function BarsV({ rows, empty, onPick, nowText = '' }: { rows: VBar[]; emp
   )
 }
 
-/** Donut: one stroked arc per slice on a circle whose circumference is exactly 100. */
+/**
+ * Donut: one stroked arc per slice, `pathLength="100"` so a slice's dash length IS its percentage.
+ * Without it the browser measures the circle itself (Chrome: 99.35, not the 100 that r=15.915
+ * suggests), every arc comes out ~0.65% long and the error piles up slice by slice.
+ */
 function Ring({ slices, center, label }: {
   slices: { label: string; value: number; color: string }[]; center?: ReactNode; label: string
 }) {
@@ -79,14 +83,17 @@ function Ring({ slices, center, label }: {
   let at = 0
   return (
     <div className="relative size-40 shrink-0">
-      <svg viewBox="0 0 36 36" className="size-full -rotate-90" role="img" aria-label={label}>
+      {/* the ring's outer edge sits at r + strokeWidth/2 = 18.415, so 0 0 36 36 would shave it flat at 12/3/6/9 */}
+      <svg viewBox="-1 -1 38 38" className="size-full -rotate-90" role="img" aria-label={label}>
         <title>{slices.map(x => `${x.label} ${fmt0(x.value)}`).join(' · ')}</title>
         {slices.map(s => {
           const pct = (s.value / total) * 100
-          const gap = slices.length > 1 ? 0.7 : 0 // a hairline seam so touching slices stay apart
+          // a hairline seam so touching slices stay apart, but never more than a quarter of the
+          // slice itself — a flat 0.7 off a 2% slice draws it a third smaller than it is
+          const gap = slices.length > 1 ? Math.min(0.7, pct / 4) : 0
           const el = (
-            <circle key={s.label} cx="18" cy="18" r="15.915" fill="none" stroke={s.color} strokeWidth="5"
-              strokeDasharray={`${Math.max(0, pct - gap)} ${100 - Math.max(0, pct - gap)}`} strokeDashoffset={-at} />
+            <circle key={s.label} cx="18" cy="18" r="15.915" pathLength="100" fill="none" stroke={s.color} strokeWidth="5"
+              strokeDasharray={`${pct - gap} ${100 - (pct - gap)}`} strokeDashoffset={-at} />
           )
           at += pct
           return el

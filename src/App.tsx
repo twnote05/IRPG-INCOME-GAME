@@ -1,4 +1,4 @@
-import { BarChart3, Languages, Map as MapIcon, Moon, NotebookPen, Sun, LayoutGrid } from 'lucide-react'
+import { BarChart3, Flag, Languages, Map as MapIcon, Moon, NotebookPen, Sun, LayoutGrid } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { DICT, type Lang } from './lib/i18n'
 import MoneyApp, { MONEY_TABS, type MoneyTab } from './money/MoneyApp'
@@ -15,7 +15,7 @@ function loadPrefs(): Prefs {
   try { return { ...fallback, ...JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') } } catch { return fallback }
 }
 
-const TAB_ICON = { log: NotebookPen, plan: MapIcon, sum: BarChart3 } as const
+const TAB_ICON = { log: NotebookPen, plan: MapIcon, debt: Flag, sum: BarChart3 } as const
 
 export default function App() {
   const money = useMoney()

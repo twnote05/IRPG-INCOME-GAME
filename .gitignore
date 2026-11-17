@@ -5,7 +5,8 @@ dist/
 server/.venv/
 server/.env
 __pycache__/
-# personal finance data must never be committed
+# personal finance data must never be committed (this repo is public)
+บันทึกการเงินส่วนตัว.md
 *backup*.json
 *.db
 # local-only reference material (downloaded images, research PDFs) and tool settings

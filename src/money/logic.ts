@@ -121,6 +121,70 @@ export function payoffMonth(item: { n?: number; of?: number }, month: string) {
   for (let i = 0; i < Math.max(0, item.of - periodN(item)); i++) k = nextMonth(k)
   return k
 }
+export interface PayoffDebt {
+  name: string
+  /** What is still owed on it today: the instalments not yet paid. */
+  balance: number
+  pay: number
+  /** Months from `month` until it closes; 0 when it does not close inside the cap. */
+  months: number
+  end: string | null
+}
+export interface PayoffPlan {
+  /** In the order they get paid off — smallest balance first. */
+  debts: PayoffDebt[]
+  months: number
+  end: string | null
+  /** Still owed across every scheduled debt. */
+  total: number
+  /** Baht a month that comes back once they are all gone. */
+  freed: number
+  /** Debt rows with no period count: nothing to schedule them from. */
+  open: string[]
+}
+/**
+ * Snowball. Every debt keeps paying its instalment; anything spare — the `extra`, plus the
+ * instalment of each debt already closed — goes to the smallest balance left, because closing a
+ * debt is what frees the next month's payment.
+ *
+ * Balances are the instalments still due, so whatever interest the contract charges is already
+ * inside them. Paying early is modelled as the balance simply going down, which is the optimistic
+ * reading: a real contract may charge a prepayment fee, or refuse early settlement outright.
+ */
+export function payoffPlan(plan: Row[], month: string, extra = 0, cap = 600): PayoffPlan {
+  const rows = plan.filter(isDebt)
+  const open = rows.filter(r => !r.of && r.name.trim()).map(r => r.name.trim())
+  let live = rows
+    .filter(r => r.of && +r.amount > 0)
+    .map(r => ({ name: r.name.trim() || '—', pay: +r.amount, start: Math.max(0, (r.of! - periodN(r)) * +r.amount), bal: 0 }))
+    .filter(d => d.start > 0)
+  for (const d of live) d.bal = d.start
+  const total = sum(live, d => d.start), freed = sum(live, d => d.pay)
+
+  const debts: PayoffDebt[] = []
+  let pot = Math.max(0, +extra || 0), k = month, i = 0
+  while (live.length && i < cap) {
+    live.sort((a, b) => a.bal - b.bal || a.name.localeCompare(b.name))
+    let spare = pot
+    // the instalments first: a final part-period frees the rest of its own payment this month
+    for (const d of live) { const p = Math.min(d.pay, d.bal); d.bal -= p; spare += d.pay - p }
+    // then the snowball, smallest balance first, spilling over as each one is cleared
+    for (const d of live) { if (spare <= 0) break; const p = Math.min(spare, d.bal); d.bal -= p; spare -= p }
+    i++
+    for (const d of live) {
+      if (d.bal > 1e-9) continue
+      debts.push({ name: d.name, balance: d.start, pay: d.pay, months: i, end: k })
+      pot += d.pay
+    }
+    live = live.filter(d => d.bal > 1e-9)
+    k = nextMonth(k)
+  }
+  // nothing realistic reaches the cap, but never report a finish date that was never computed
+  for (const d of live) debts.push({ name: d.name, balance: d.start, pay: d.pay, months: 0, end: null })
+  const last = live.length ? null : debts.at(-1)
+  return { debts, months: last?.months ?? 0, end: last?.end ?? null, total, freed, open }
+}
+
 /** Warn before the money runs out: at 80% there's still time to adjust. */
 export const WARN_AT = 0.8
 export type BudgetState = 'ok' | 'warn' | 'over'

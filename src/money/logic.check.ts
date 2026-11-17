@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import {
   alloc, budgetState, byAccount, carryMonth, daysInMonth, evalAmount, fuelCost, guessEnv,
-  looksLikeToken, mergeBackup, mergeIntoRemote, nextMonth, nextPeriod, parseQuick, payoffMonth, periodN, pieData,
+  looksLikeToken, mergeBackup, mergeIntoRemote, nextMonth, nextPeriod, parseQuick, payoffMonth, payoffPlan, periodN, pieData,
   prevMonth, spendable, paidNames, isPaid, paidEntryId, sum, bucketTotals, validGasUrl, validMonth, yearMonths, weekStart, addDays, weekDays, monthTotals, envTotals, dayTotals, type MoneyDb,
 } from './logic.ts'
 
@@ -264,5 +264,29 @@ eq(envTotals(SUM, '2026-11')[0], { label: 'น้ำมัน', value: 700 }, 'b
 eq(envTotals(SUM, '2026-11').at(-1)!.label, 'อาหาร', 'smallest last')
 eq(envTotals({ ...SUM, entries: [{ id: 'a', date: '2026-11-01', type: 'out', amount: 5, env: 'b', note: 'x' }, { id: 'b', date: '2026-11-01', type: 'out', amount: 5, env: 'a', note: 'x' }] as MoneyDb['entries'] }, '2026-11').map(r => r.label), ['a', 'b'], 'ties sort by label, not entry order')
 eq(dayTotals(SUM, '2026-11')['2026-11-12'], 750, 'per-day total')
+
+// --- payoff plan: snowball over the instalments still due ---
+const D = (name: string, amount: number, n: number, of: number) => ({ id: name, name, amount, n, of })
+const TYRE_CAR = [D('ยาง', 1000, 0, 3), D('รถ', 2000, 0, 10)]
+const P1 = payoffPlan(TYRE_CAR, '2026-01')
+eq(P1.total, 23000, 'balance owed is the instalments not yet paid')
+eq(P1.freed, 3000, 'every instalment comes back once they are all gone')
+eq(P1.debts.map(d => d.name), ['ยาง', 'รถ'], 'the smallest balance closes first')
+eq(P1.debts[0].balance, 3000, 'balance reported is what was owed at the start')
+eq(P1.debts[0].end, '2026-03', 'three instalments means March')
+eq(P1.months, 8, 'the freed 1,000 pulls the car in from 10 months to 8')
+eq(P1.end, '2026-08', 'debt-free month')
+const P2 = payoffPlan(TYRE_CAR, '2026-01', 1000)
+ok(P2.months < P1.months, 'paying extra finishes sooner')
+eq(P2.months, 6, '1,000 extra a month takes two more months off')
+eq(payoffPlan(TYRE_CAR, '2026-01', -500).months, P1.months, 'a negative extra is ignored, never a slower plan')
+// a debt with no period count cannot be scheduled — say so instead of guessing
+const P3 = payoffPlan([{ id: 'c', name: 'บัตร', amount: 500, total: 9000 }], '2026-01')
+eq(P3.open, ['บัตร'], 'listed as open-ended')
+eq(P3.months, 0, 'no finish month invented')
+eq(P3.end, null, 'and no date')
+eq(payoffPlan([], '2026-01').debts.length, 0, 'no debts, no plan')
+eq(payoffPlan([D('จบแล้ว', 1000, 3, 3)], '2026-01').debts.length, 0, 'a finished installment is not scheduled')
+eq(payoffPlan([D('ฟรี', 0, 0, 5)], '2026-01').debts.length, 0, 'a 0-baht instalment never loops forever')
 
 console.log('money.check: all good')
