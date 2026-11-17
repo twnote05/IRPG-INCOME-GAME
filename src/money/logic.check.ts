@@ -1,9 +1,9 @@
 // Run: npm run check — the self-tests from โปรเจค 2 (?selftest), ported, plus merge safety.
 import assert from 'node:assert/strict'
 import {
-  alloc, budgetState, byAccount, carryMonth, dailyBudget, dateInMonth, daysInMonth, evalAmount, fuelCost, guessEnv,
+  alloc, budgetState, byAccount, carryMonth, daysInMonth, evalAmount, fuelCost, guessEnv,
   looksLikeToken, mergeBackup, mergeIntoRemote, nextMonth, nextPeriod, parseQuick, payoffMonth, periodN, pieData,
-  prevMonth, sum, summarizeMoney, logStreak, bucketTotals, goalProgress, validGasUrl, validMonth, vsPlan, yearMonths, bestStreak, dayLog, moneyRewards, weekStart, addDays, battleLog, weekChallenge, type MoneyDb,
+  prevMonth, spendable, paidNames, isPaid, paidEntryId, sum, bucketTotals, validGasUrl, validMonth, yearMonths, weekStart, addDays, weekDays, monthTotals, envTotals, dayTotals, type MoneyDb,
 } from './logic.ts'
 
 const eq = (a: unknown, b: unknown, m: string) => assert.deepEqual(a, b, m)
@@ -71,12 +71,6 @@ eq(daysInMonth('2026-10'), 31, 'Oct')
 eq(daysInMonth('2026-11'), 30, 'Nov')
 
 // --- daily allowance ---
-eq(dailyBudget(31000, 10000, '2026-08', '2026-08-01'), { daysLeft: 31, left: 21000, perDay: 21000 / 31 }, 'day 1')
-eq(dailyBudget(31000, 10000, '2026-08', '2026-08-31'), { daysLeft: 1, left: 21000, perDay: 21000 }, 'last day')
-eq(dailyBudget(30000, 30000, '2026-08', '2026-08-15').perDay, 0, 'fully spent')
-eq(dailyBudget(20000, 25000, '2026-08', '2026-08-15').left, -5000, 'overspent is negative')
-eq(dailyBudget(20000, 25000, '2026-08', '2026-08-15').perDay, 0, 'no negative per day')
-eq(dailyBudget(3100, 0, '2026-09', '2026-08-15'), { daysLeft: 30, left: 3100, perDay: 3100 / 30 }, 'other month = whole month')
 eq(yearMonths('2026').length, 12, '12 months')
 eq(yearMonths('2026')[0], '2026-01', 'starts Jan')
 
@@ -96,13 +90,8 @@ eq(budgetState(1000, 1000), 'warn', 'exactly on budget is not over')
 eq(budgetState(1001, 1000), 'over', 'over')
 eq(budgetState(0, 0), 'ok', 'no budget no spend')
 eq(budgetState(50, 0), 'over', 'spend without budget')
-ok(dateInMonth('2026-10').startsWith('2026-10'), 'logs into viewed month')
-ok(dateInMonth('2026-02', new Date(2026, 2, 31)) <= '2026-02-28', 'day 31 clamps to Feb')
 
-// --- vsPlan / byAccount ---
-const spent: Record<string, number> = { 'ค่ากิน': 3200, 'ค่าไฟ': 900 }
-eq(vsPlan([row({ name: 'ค่ากิน', amount: 3000 }), row({ name: 'ค่าไฟ', amount: 1500 }), row({ name: '', amount: 9 })], n => spent[n] || 0),
-  [{ name: 'ค่ากิน', planned: 3000, actual: 3200, diff: 200 }, { name: 'ค่าไฟ', planned: 1500, actual: 900, diff: -600 }], 'over first, skip unnamed')
+// --- byAccount ---
 eq(byAccount([row({ amount: 3000, acct: 'KNN' }), row({ amount: 4325, acct: 'KNN' }), row({ amount: 9822 })]), [['KNN', 7325], ['—', 9822]], 'group by account')
 
 // --- URL / token ---
@@ -150,86 +139,130 @@ const doc: MoneyDb = {
     e('5', '2026-09-01', 'out', 5000), e('6', '2026-09-28', 'out', 120), e('7', '2026-05-01', 'out', 99999),
   ],
 }
-const s = summarizeMoney(doc, new Date(2026, 8, 28))
-eq(s.income, 45000, 'income')
-eq(s.planned, 15000, 'planned')
-eq(s.spent, 5120, 'spent this month')
-eq(s.avgExpense, 13000, 'avg of last 3 completed months')
-eq(s.investPct, 30, 'only the DCA bucket, shown as %')
-eq(s.investBudget, 9000, '(45000 − 15000) × 0.3')
-eq(s.loggedToday, true, 'logged today')
-eq(summarizeMoney(doc, new Date(2026, 9, 5)).income, 45000, 'October falls back to latest planned income')
-eq(summarizeMoney(doc, new Date(2026, 9, 5)).investBudget, 9000, 'and its buckets')
 eq(sum([{ amount: 1 }, { amount: '2' as unknown as number }]), 3, 'sum tolerates strings')
 
-// --- game layer ---
-const days = (...ds: string[]) => ds.map((d, i) => e('s' + i, d, 'out', 1))
-eq(logStreak(days('2026-09-26', '2026-09-27', '2026-09-28'), new Date(2026, 8, 28)), 3, 'streak incl. today')
-eq(logStreak(days('2026-09-26', '2026-09-27'), new Date(2026, 8, 28)), 2, "today not logged yet keeps yesterday's streak")
-eq(logStreak(days('2026-09-25', '2026-09-27', '2026-09-28'), new Date(2026, 8, 28)), 2, 'gap breaks it')
-eq(logStreak(days('2026-09-25'), new Date(2026, 8, 28)), 0, 'stale streak is 0')
-eq(logStreak(days('2026-08-31', '2026-09-01'), new Date(2026, 8, 1)), 2, 'across months')
+// --- buckets / day log ---
 const tot = bucketTotals(doc)
 eq(tot['ลงทุน DCA'], 9000, 'bucket saved = left × pct')
-const g = goalProgress(tot, { 'ลงทุน DCA': 18000, 'เที่ยว': 10000, 'ไม่มี': 0 })
-eq(g.map(x => [x.name, x.pct, x.reached]), [['ลงทุน DCA', 50, false], ['เที่ยว', 100, true]], 'unfinished first, zero targets dropped')
 
-eq(logStreak(days('2026-09-26'), new Date(2026, 8, 28), ['2026-09-27']), 2, 'no-spend days keep the streak')
-eq(bestStreak(['2026-02-27', '2026-02-28', '2026-03-01', '2026-03-05']), 3, 'best streak across month end')
-eq(bestStreak([]), 0, 'no days')
-
-// day HP: 15000 plan in a 30-day month, 5000 spent on the 1st
-const dl = dayLog(doc, '2026-09', 15000)
-eq([dl[0].max, dl[0].hp, dl[0].active], [500, -4500, true], 'day 1: 15000/30 HP, took 5000')
-eq(dl[1].max, 10000 / 29, 'day 2 HP = what is left ÷ days left')
-eq(dl[1].active, false, 'nothing logged on day 2')
-
-// rewards: Sep 28 → only finished days of Sep count; Aug has no plan so no dungeon
-const ids = (rs: { id: string }[]) => rs.map(r => r.id)
-const rw = ids(moneyRewards(doc, {}, ['2026-09-10', '2026-09-28'], new Date(2026, 8, 28)))
-eq(rw.filter(x => x.startsWith('day:')), ['day:2026-09-10'], 'rest day within HP counts, day 1 overspent, today not finished')
-eq(rw.filter(x => x.startsWith('ach:')), ['ach:first', 'ach:rest'], 'first entry + rest achievements')
-const clean: MoneyDb = {
-  months: {
-    '2026-08': { income: [row({ amount: 30000 })], plan: [row({ name: 'ค่ากิน', amount: 5000 }), row({ name: 'ผ่อนรถ', amount: 1000, n: 12, of: 12 })], buckets: [{ id: 'b', name: 'เที่ยว', pct: 1 }] },
-  },
-  entries: [{ ...e('a', '2026-08-03', 'out', 4000), env: 'ค่ากิน' }, { ...e('b', '2026-08-04', 'out', 1000), env: 'ผ่อนรถ' }],
-}
-const cr = moneyRewards(clean, { 'เที่ยว': 30000 }, [], new Date(2026, 8, 2))
-eq(ids(cr).filter(x => !x.startsWith('ach:')), ['dungeon:2026-08', 'debt:ผ่อนรถ', 'chest:เที่ยว:25', 'chest:เที่ยว:50', 'chest:เที่ยว:75'], 'dungeon, dragon, 3 chests (24000/30000)')
-eq(cr.find(r => r.id === 'debt:ผ่อนรถ')?.exp, 1000, 'dragon reward')
-eq(ids(cr).filter(x => x.startsWith('ach:')), ['ach:first', 'ach:clean', 'ach:freedom'], 'achievements follow')
-clean.entries.push({ ...e('c', '2026-08-05', 'out', 1500), env: 'ค่ากิน' })
-eq(ids(moneyRewards(clean, {}, [], new Date(2026, 8, 2))).includes('dungeon:2026-08'), false, 'one envelope over → no clear')
-eq(ids(moneyRewards(clean, {}, ['2026-08-05'], new Date(2026, 8, 2))).includes('ach:rest'), false, 'a "no-spend" day with spending is not one')
-
-// weeks, battle log, weekly challenge, payday loot
+// weeks
 eq(weekStart('2026-09-28'), '2026-09-28', 'Mon 28 Sep is its own week start')
 eq(weekStart('2026-10-04'), '2026-09-28', 'Sunday belongs to the week before')
 eq(addDays('2026-09-28', 5), '2026-10-03', 'addDays across month end')
-const bl = battleLog(doc, [], '2026-09-28')
-eq([bl.from, bl.spent, bl.hits, bl.biggest?.amount], ['2026-09-22', 120, 1, 120], '7-day window')
-const wkDb: MoneyDb = { months: {}, entries: ['2026-09-21', '2026-09-22', '2026-09-23', '2026-09-24', '2026-09-25'].map((d, i) => e('w' + i, d, 'out', 1)) }
-const logWeek = () => { for (let i = 0; i < 400; i++) { const st = addDays('2026-01-05', 7 * i); if (weekChallenge(wkDb, st).id === 'log5') return st } }
-const lw = logWeek()!
-const shifted: MoneyDb = { months: {}, entries: [0, 1, 2, 3, 4].map(i => e('l' + i, addDays(lw, i), 'out', 1)) }
-eq(weekChallenge(shifted, lw, [], addDays(lw, 4)).done, true, 'log5: 5 logged days incl. today')
-eq(weekChallenge(shifted, lw, [], addDays(lw, 3)).n, 4, 'progress so far')
-const nd: MoneyDb = { months: {}, entries: [{ ...e('c1', '2026-09-22', 'out', 60), note: 'กาแฟเย็น' }] }
-eq(new Set(Array.from({ length: 60 }, (_, i) => weekChallenge(nd, addDays('2026-01-05', 7 * i)).id)).size, 5, 'every challenge comes up')
-const loot = moneyRewards({ ...doc, entries: [...doc.entries, e('i1', '2026-09-01', 'in', 45000)] }, {}, [], new Date(2026, 8, 28)).find(r => r.kind === 'loot')
-eq([loot?.id, loot?.exp], ['loot:2026-09', 150], 'income logged + DCA bucket → triple loot')
 
-// festivals: sale boss, ang pao, trip fund
-const fest: MoneyDb = {
-  months: { '2026-11': { income: [row({ amount: 40000 })], plan: [row({ name: 'ค่ากิน', amount: 30000 })], buckets: [{ id: 't', name: 'เที่ยวสงกรานต์', pct: 1 }] } },
-  entries: [{ ...e('s', '2026-11-11', 'out', 200), env: 'ค่ากิน' }, e('a', '2027-02-07', 'in', 888)],
+// --- spendable: bills are set aside for the whole month, paid or not ---
+const SP: MoneyDb = {
+  months: { '2026-11': { income: [{ id: 'i', name: 'เงินเดือน', amount: 30000 }],
+    plan: [{ id: 'p', name: 'ค่าบ้าน', amount: 22000 }], buckets: [] } },
+  entries: [
+    { id: 'a', date: '2026-11-02', type: 'out', env: 'ค่าบ้าน', note: 'ค่าบ้าน', amount: 22000 },
+    { id: 'b', date: '2026-11-05', type: 'out', env: 'อาหาร', note: 'ข้าวเที่ยง', amount: 3200 },
+  ],
 }
-const fr = (d: Date, goals = {}) => moneyRewards(fest, goals, [], d).map(r => r.id)
-eq(fr(new Date(2026, 10, 20)).includes('sale:2026-11-11'), true, '11.11 logged within HP → sale boss beaten')
-eq(fr(new Date(2026, 10, 11)).includes('sale:2026-11-11'), false, 'not until the day is over')
-eq(fr(new Date(2027, 1, 10)).includes('angpao:2027'), true, 'income 1 day before CNY 2027 → ang pao')
-eq(fr(new Date(2027, 2, 20), { 'เที่ยวสงกรานต์': 15000 }).includes('trip:songkran:2027'), true, 'travel goal ≥50% within 30 days of Songkran')
-eq(fr(new Date(2027, 1, 1), { 'เที่ยวสงกรานต์': 15000 }).some(x => x.startsWith('trip:songkran')), false, 'too early for the trip quest')
+eq(spendable(SP, '2026-11', '2026-11-12').discretionary, 3200, 'the paid bill is not discretionary')
+eq(spendable(SP, '2026-11', '2026-11-12').left, 4800, '30000 − 22000 − 3200')
+eq(spendable(SP, '2026-11', '2026-11-12').daysLeft, 19, '12..30 inclusive')
+eq(spendable(SP, '2026-11', '2026-11-30').daysLeft, 1, 'last day still divides by 1')
+eq(spendable(SP, '2026-11', '2026-10-15').daysLeft, 30, 'another month divides by the whole month')
+ok(spendable(SP, '2026-11', '2026-11-12').perDay > 252, 'about 253 a day')
+// no plan at all (several of the imported months)
+const BARE: MoneyDb = { months: {}, entries: [{ id: 'c', date: '2026-03-04', type: 'out', env: 'อื่นๆ', note: 'x', amount: 100 }] }
+eq(spendable(BARE, '2026-03', '2026-03-10').hasPlan, false, 'no plan flagged')
+eq(spendable(BARE, '2026-03', '2026-03-10').perDay, 0, 'never a negative or infinite per-day')
+// income falls back to logged income when the month has no income row
+const LOGGED: MoneyDb = { months: { '2026-04': { income: [], plan: [], buckets: [] } },
+  entries: [{ id: 'd', date: '2026-04-01', type: 'in', env: 'รายรับ', note: 'เงินเดือน', amount: 20000 }] }
+eq(spendable(LOGGED, '2026-04', '2026-04-10').income, 20000, 'falls back to logged income')
+// Any edit (deleting an entry, fixing an amount) creates the viewed month from blankMonth(), which
+// carries one 0-baht income row. Falling back on the row count instead of the amount read that as
+// "income 0" and painted an imported month red. Fall back on the amount.
+const PHANTOM: MoneyDb = {
+  months: { '2026-05': { income: [{ id: 'z', name: 'เงินเดือน', amount: 0 }], plan: [], buckets: [] } },
+  entries: [
+    { id: 'p2', date: '2026-05-09', type: 'out', env: 'อื่นๆ', note: 'กาแฟ', amount: 9208 },
+    { id: 'p1', date: '2026-05-01', type: 'in', env: 'รายรับ', note: 'เงินเดือน', amount: 45000 },
+  ],
+}
+eq(spendable(PHANTOM, '2026-05', '2026-05-12').income, 45000, 'a 0-baht income row falls back to logged income')
+eq(spendable(PHANTOM, '2026-05', '2026-05-12').left, 35792, 'a blank month never turns an imported month over-budget')
+// A bill logged twice: only the entry that marks the row paid is the one the plan stands in for.
+// Same fixture and same numbers as the digest assertion in gas/code.check.mjs — keep them together.
+const TWICE: MoneyDb = {
+  months: { '2026-11': { income: [{ id: 'i', name: 'เงินเดือน', amount: 45000 }],
+    plan: [{ id: 'p', name: 'ค่าไฟ', amount: 1000 }], buckets: [] } },
+  entries: [
+    { id: 't3', date: '2026-11-13', type: 'out', env: 'อาหาร', note: 'ข้าว', amount: 200 },
+    { id: 't2', date: '2026-11-03', type: 'out', env: 'ค่าไฟ', note: 'ค่าไฟ', amount: 1000 }, // tapped จ่ายแล้ว
+    { id: 't1', date: '2026-11-02', type: 'out', env: 'ค่าไฟ', note: 'ค่าไฟ', amount: 9000 }, // typed by hand
+  ],
+}
+eq(spendable(TWICE, '2026-11', '2026-11-12').discretionary, 9200, 'a second entry with a paid name is still spending')
+eq(spendable(TWICE, '2026-11', '2026-11-12').left, 34800, '45000 − 1000 − 9200')
+// paidNames: normalised, amount-irrelevant, blank rows never match
+eq([...paidNames(SP, '2026-11')], ['ค่าบ้าน'], 'only the entry naming a plan row counts')
+
+
+// --- paid detection: note matches the row name, amount ignored ---
+const PD: MoneyDb = {
+  months: { '2026-11': { income: [], buckets: [], plan: [
+    { id: '1', name: 'ค่าบ้าน', amount: 4500 },
+    { id: '2', name: 'อาหาร', amount: 8000 },
+    { id: '3', name: '', amount: 500 },
+  ] } },
+  entries: [
+    { id: 'e1', date: '2026-11-01', type: 'out', env: 'ค่าบ้าน', note: ' ค่าบ้าน ', amount: 4000 },
+    { id: 'e2', date: '2026-11-03', type: 'out', env: 'อาหาร', note: 'ข้าวเที่ยง', amount: 85 },
+    { id: 'e3', date: '2026-10-01', type: 'out', env: 'ค่าบ้าน', note: 'ค่าบ้าน', amount: 4500 },
+  ],
+}
+const paid = paidNames(PD, '2026-11')
+ok(isPaid(PD.months['2026-11'].plan[0], paid), 'paid despite spaces and a smaller amount')
+ok(!isPaid(PD.months['2026-11'].plan[1], paid), 'daily food notes do not pay the food row')
+ok(!isPaid(PD.months['2026-11'].plan[2], paid), 'a blank row is never paid')
+eq(paidEntryId(PD, '2026-11', 'ค่าบ้าน'), 'e1', 'this month only, newest first')
+eq(paidEntryId(PD, '2026-11', 'ไม่มี'), null, 'nothing to undo')
+// two rows sharing a name: both read as paid rather than crashing or picking one
+const TWIN = { id: '4', name: 'ค่าบ้าน', amount: 900 }
+ok(isPaid(TWIN, paid), 'a duplicate name is paid too')
+// blank plan row + empty/blank-note out entries: paidNames itself must stay empty
+const BL: MoneyDb = {
+  months: { '2026-11': { income: [], buckets: [], plan: [{ id: '1', name: ' ', amount: 1 }] } },
+  entries: [
+    { id: 'b1', date: '2026-11-01', type: 'out', env: 'x', note: '', amount: 1 },
+    { id: 'b2', date: '2026-11-02', type: 'out', env: 'x', note: '  ', amount: 1 },
+  ],
+}
+eq(paidNames(BL, '2026-11').size, 0, 'a blank plan row never enters paidNames')
+// paidEntryId: newest date wins; entries are stored newest-first, so on a date tie the first in array order (logged last) wins
+const NW: MoneyDb = { months: PD.months, entries: [
+  { id: 'n3', date: '2026-11-05', type: 'out', env: 'x', note: 'ค่าบ้าน', amount: 1 },
+  { id: 'n1', date: '2026-11-05', type: 'out', env: 'x', note: 'ค่าบ้าน', amount: 1 },
+  { id: 'n2', date: '2026-11-02', type: 'out', env: 'x', note: 'ค่าบ้าน', amount: 1 },
+] }
+eq(paidEntryId(NW, '2026-11', 'ค่าบ้าน'), 'n3', 'newest date, tie -> first in newest-first order')
+eq(paidEntryId(PD, '2026-10', 'ค่าบ้าน'), 'e3', 'asking about October returns October entry, not November')
+eq(paidEntryId({ months: PD.months, entries: [PD.entries[0]] }, '2026-10', 'ค่าบ้าน'), null, 'a later month match does not count')
+ok(!isPaid({ id: 'x', name: ' ', amount: 1 }, new Set([''])), 'isPaid rejects a blank name itself')
+eq(paidEntryId(PD, '2026-11', ' '), null, 'blank name has nothing to undo')
+
+// --- summary data ---
+const SUM: MoneyDb = { months: {}, entries: [
+  { id: 'w1', date: '2026-11-09', type: 'out', env: 'อาหาร', note: 'a', amount: 100 }, // Monday
+  { id: 'w2', date: '2026-11-12', type: 'out', env: 'อาหาร', note: 'b', amount: 50 },
+  { id: 'w3', date: '2026-11-12', type: 'out', env: 'น้ำมัน', note: 'c', amount: 700 },
+  { id: 'w4', date: '2026-11-15', type: 'in', env: 'รายรับ', note: 'd', amount: 9000 },
+  { id: 'y1', date: '2026-03-02', type: 'out', env: 'อาหาร', note: 'e', amount: 400 },
+] }
+eq(weekDays(SUM, '2026-11-12').length, 7, 'seven days')
+eq(weekDays(SUM, '2026-11-12')[0].date, '2026-11-09', 'starts Monday')
+eq(weekDays(SUM, '2026-11-12')[3].total, 750, 'Thursday adds up')
+eq(sum(weekDays(SUM, '2026-11-12'), d => d.total), 850, 'income is not spending')
+eq(monthTotals(SUM, '2026').length, 12, 'twelve months')
+eq(monthTotals(SUM, '2026')[2].total, 400, 'March')
+eq(monthTotals(SUM, '2026')[0].total, 0, 'an empty month is zero, not missing')
+eq(envTotals(SUM, '2026-11')[0], { label: 'น้ำมัน', value: 700 }, 'biggest first')
+eq(envTotals(SUM, '2026-11').at(-1)!.label, 'อาหาร', 'smallest last')
+eq(envTotals({ ...SUM, entries: [{ id: 'a', date: '2026-11-01', type: 'out', amount: 5, env: 'b', note: 'x' }, { id: 'b', date: '2026-11-01', type: 'out', amount: 5, env: 'a', note: 'x' }] as MoneyDb['entries'] }, '2026-11').map(r => r.label), ['a', 'b'], 'ties sort by label, not entry order')
+eq(dayTotals(SUM, '2026-11')['2026-11-12'], 750, 'per-day total')
 
 console.log('money.check: all good')

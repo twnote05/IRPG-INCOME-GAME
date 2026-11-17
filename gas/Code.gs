@@ -1,7 +1,6 @@
 /**
  * Backend ของ Investor RPG — เก็บข้อมูลใน Google Sheet ของคุณเอง
  * รายรับ-รายจ่าย: แท็บ entries + plan (โปรโตคอลเดียวกับแอปรายรับรายจ่ายเดิม)
- * ฝั่งลงทุน/ตัวละคร: แท็บ game (JSON แบ่งเป็นชิ้น) — action gameLoad / gameSave
  * ตั้งค่า Script Property 1 ตัว: TOKEN  (Run ฟังก์ชัน setup ด้านล่าง)
  * Deploy: New deployment > Web app > Execute as: Me, Who has access: Anyone
  * วิธีตั้งค่าทีละขั้นอยู่ใน README.md หัวข้อ "ตั้งค่าเริ่มใช้งาน"
@@ -32,7 +31,7 @@ function doPost(e) {
                          : !req.token     ? 'unauthorized: แอปไม่ได้ส่ง TOKEN มา — กรอกในช่องตั้งค่า'
                          : 'unauthorized: TOKEN ไม่ตรง — ค่าที่ถูกต้องอยู่ใน Execution log ของ setup (เป็น UUID มีขีด 4 ขีด)' });
     }
-    const fn = ({ load, save, quick, gameLoad, gameSave })[req.action];
+    const fn = ({ load, save, quick })[req.action];
     if (!fn) return json({ error: 'unknown action: ' + req.action });
     return json(fn(req));
   } catch (err) {
@@ -155,29 +154,46 @@ function save(req) {
   return { ok: true, savedAt: at };
 }
 
-// ---------- ฝั่งลงทุน / ตัวละคร ----------
-// ทั้งก้อนเป็น JSON เดียว แบ่งเป็นชิ้นละ 40,000 ตัวอักษร (เซลล์เก็บได้ไม่เกิน 50,000)
-// ทุกชิ้นขึ้นต้นด้วย ~ กัน Sheets ตีความชิ้นที่บังเอิญขึ้นต้นด้วย = + - @ เป็นสูตร
-const GAME_COLS = ['part', 'json'];
-const GAME_CHUNK = 40000;
+// ---------- ยอดที่ใช้ได้ของเดือน ----------
+// สูตรเดียวกับ spendable() ใน src/money/logic.ts เป๊ะๆ: income - committed - discretionary
+// แก้ที่นี่ต้องแก้ที่นั่นด้วย — gas/code.check.mjs ตรึงตัวเลขจาก fixture ชุดเดียวกับ logic.check.ts ไว้
+// ไฟล์นี้เป็น Apps Script ล้วน: ห้ามใช้ ??= ||= &&= (parse ไม่ผ่าน)
+const normNote = function (s) { return String(s == null ? '' : s).toLowerCase().trim().replace(/\s+/g, ' '); };
 
-function gameLoad() {
-  const parts = rows(sheet('game', GAME_COLS))
-    .sort((a, b) => Number(a.part) - Number(b.part))
-    .map(r => String(r.json).replace(/^~/, ''));
-  return { state: parts.join(''), savedAt: prop('GAME_SAVED_AT') || '' };
-}
+function monthMoney(doc, month) {
+  const m = doc.months[month] || { income: [], plan: [], buckets: [] };
+  const inc = m.income || [], plan = m.plan || [];
+  const amt = function (x) { return Number(x.amount) || 0; };
+  const add = function (a, x) { return a + amt(x); };
+  const inMonth = doc.entries.filter(function (e) { return String(e.date).slice(0, 7) === month; });
 
-function gameSave(req) {
-  const s = String(req.state || '');
-  const doc = JSON.parse(s); // ต้องเป็น JSON ที่ถูกต้อง ไม่งั้นไม่เขียนทับของเดิม
-  if (!doc || !doc.profile || !Array.isArray(doc.assets)) throw new Error('ข้อมูลเกมไม่ครบ ไม่บันทึก');
-  const chunks = [];
-  for (let i = 0; i < s.length; i += GAME_CHUNK) chunks.push({ part: chunks.length, json: '~' + s.slice(i, i + GAME_CHUNK) });
-  writeAll(sheet('game', GAME_COLS), GAME_COLS, chunks, ['json']);
-  const at = new Date().toISOString();
-  PropertiesService.getScriptProperties().setProperty('GAME_SAVED_AT', at);
-  return { ok: true, savedAt: at };
+  // ตกมาใช้ยอดที่จดไว้เมื่อแถวรายรับรวมได้ 0 (เดือนที่นำเข้ามา ไม่เคยตั้งเงินเดือนไว้ในแผน)
+  const income = inc.reduce(add, 0) || inMonth.filter(function (e) { return e.type === 'in'; }).reduce(add, 0);
+  const committed = plan.reduce(add, 0);
+
+  // บิลที่กด "จ่ายแล้ว" ถูกนับใน committed ไปแล้ว — ตัดออกชื่อละ 1 รายการ (วันที่ใหม่สุด, เสมอกันเอาตัวแรก)
+  // เหมือน paidEntryId() ในแอป; รายการที่สองชื่อเดียวกันคือเงินที่ใช้จริงเพิ่ม ต้องนับ
+  const planned = {};
+  plan.forEach(function (r) { if (normNote(r.name)) planned[normNote(r.name)] = true; });
+  const marker = {};
+  inMonth.forEach(function (e, i) {
+    const n = normNote(e.note);
+    if (e.type !== 'out' || !planned[n]) return;
+    if (!(n in marker) || String(e.date) > String(inMonth[marker[n]].date)) marker[n] = i;
+  });
+  const skip = {};
+  Object.keys(marker).forEach(function (n) { skip[marker[n]] = true; });
+
+  let discretionary = 0, spent = 0;
+  inMonth.forEach(function (e, i) {
+    if (e.type !== 'out') return;
+    spent += amt(e);
+    if (!skip[i]) discretionary += amt(e);
+  });
+
+  return { income: income, committed: committed, discretionary: discretionary, spent: spent,
+           left: income - committed - discretionary,
+           hasPlan: inc.length > 0 || plan.length > 0 };
 }
 
 // ---------- เตือนรายวันทางอีเมล (ทางเลือกแทน Web Push — ไม่ต้องเปิดคอมทิ้งไว้) ----------
@@ -189,17 +205,12 @@ function dailyReminder() {
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const daysLeft = Math.max(1, lastDay - day + 1);
 
-  const doc = load();
-  const m = doc.months[month];
-  const planned = m ? m.plan.reduce(function (a, r) { return a + (Number(r.amount) || 0); }, 0) : 0;
-  const spent = doc.entries.reduce(function (a, e) {
-    return a + (e.type === 'out' && String(e.date).slice(0, 7) === month ? Number(e.amount) || 0 : 0);
-  }, 0);
-  const left = planned - spent;
+  const d = monthMoney(load(), month);
+  const spent = d.spent, left = d.left;
   const money = function (n) { return Math.round(n).toLocaleString('en-US'); };
 
   let subject, body;
-  if (!planned) {
+  if (!d.hasPlan) {
     subject = day <= 3 ? '💰 ต้นเดือนแล้ว — ยังไม่ได้ตั้งแผน' : '💰 อย่าลืมจดรายจ่ายวันนี้';
     body = day <= 3
       ? 'เปิดแอปแล้วกด "คัดลอกแผนจากเดือนก่อน" งวดผ่อนจะเดินเลขให้เอง'
@@ -207,10 +218,10 @@ function dailyReminder() {
   } else if (left > 0) {
     subject = '💰 วันนี้ใช้ได้อีก ' + money(left / daysLeft) + ' บาท';
     body = 'เหลือ ' + money(left) + ' บาท อีก ' + daysLeft + ' วันจะสิ้นเดือน\n'
-         + 'ใช้ไปแล้ว ' + money(spent) + ' จากแผน ' + money(planned);
+         + 'ใช้ไปแล้ว ' + money(spent) + ' จากรายรับ ' + money(d.income);
   } else {
     subject = '⚠️ ใช้เกินแผนแล้ว ' + money(-left) + ' บาท';
-    body = 'ใช้ไป ' + money(spent) + ' จากแผน ' + money(planned) + '\n'
+    body = 'ใช้ไป ' + money(spent) + ' จากรายรับ ' + money(d.income) + '\n'
          + 'เหลืออีก ' + daysLeft + ' วันจะสิ้นเดือน';
   }
   MailApp.sendEmail(Session.getEffectiveUser().getEmail(), subject,
@@ -232,21 +243,17 @@ function dailyDigest(now) {
   const daysLeft = Math.max(1, lastDay - day + 1);
 
   const doc = load();
-  const m = doc.months[month];
-  const planned = m ? m.plan.reduce(function (a, r) { return a + (Number(r.amount) || 0); }, 0) : 0;
+  const d = monthMoney(doc, month);
 
-  let spentMonth = 0, spentYesterday = 0;
+  let spentYesterday = 0;
   doc.entries.forEach(function (e) {
-    if (e.type !== 'out') return;
-    const d = String(e.date);
-    if (d.slice(0, 7) === month) spentMonth += Number(e.amount) || 0;
-    if (d === yISO) spentYesterday += Number(e.amount) || 0;
+    if (e.type === 'out' && String(e.date) === yISO) spentYesterday += Number(e.amount) || 0;
   });
 
-  const left = planned - spentMonth;
-  return { yesterday: yISO, spentYesterday: spentYesterday, planned: planned,
-           spentMonth: spentMonth, left: left, daysLeft: daysLeft,
-           perDay: left > 0 ? left / daysLeft : 0 };
+  return { yesterday: yISO, spentYesterday: spentYesterday, hasPlan: d.hasPlan,
+           income: d.income, committed: d.committed, discretionary: d.discretionary,
+           spentMonth: d.spent, left: d.left, daysLeft: daysLeft,
+           perDay: d.left > 0 ? d.left / daysLeft : 0 };
 }
 
 /** ประกอบข้อความ — แยกจากการส่ง จะได้ทดสอบข้อความได้ตรงๆ */
@@ -258,7 +265,7 @@ function digestText(d) {
 
   let t = 'สรุปเมื่อวาน ' + dd + ' ' + mon + '\n';
   t += d.spentYesterday > 0 ? 'ใช้ไป ' + money(d.spentYesterday) + ' บาท' : 'ไม่ได้จดรายการไว้';
-  if (!d.planned) return t + '\n\nเดือนนี้ยังไม่ได้ตั้งแผน เลยยังบอกยอดต่อวันไม่ได้';
+  if (!d.hasPlan) return t + '\n\nเดือนนี้ยังไม่ได้ตั้งแผน เลยยังบอกยอดต่อวันไม่ได้';
   t += '\n\n';
   t += d.left > 0
     ? 'วันนี้ใช้ได้ ' + money(d.perDay) + ' บาท\nเหลือ ' + money(d.left) + ' · อีก ' + d.daysLeft + ' วัน'

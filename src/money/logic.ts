@@ -1,8 +1,6 @@
 // Income/expense ("money") logic, ported from โปรเจค 2 (รายรับรายจ่าย) with its behaviour kept.
-// Pure functions only — the one runtime import (calendar.ts) is pure too, so `npm run check` runs this under plain Node.
+// Pure functions only, so `npm run check` runs this under plain Node.
 // Data shape matches the Google Sheet backend (Code.gs), so both apps can share one sheet.
-
-import { CNY, daysBetween, eventsOfYear, shiftDays, type Payday } from '../lib/calendar.ts'
 
 export interface Row { id: string; name: string; amount: number; n?: number; of?: number; acct?: string; total?: number }
 export interface Bucket { id: string; name: string; pct: number } // pct is a fraction: 0.27 = 27%
@@ -32,13 +30,6 @@ export const nextMonth = (m: string) => {
 export const daysInMonth = (m: string) => new Date(+m.slice(0, 4), +m.slice(5, 7), 0).getDate()
 export const yearMonths = (y: string) => Array.from({ length: 12 }, (_, i) => `${y}-${String(i + 1).padStart(2, '0')}`)
 export const monthOf = (e: { date?: string }) => String(e.date || '').slice(0, 7)
-
-/** An entry logged while viewing another month lands in that month, on today's day number (clamped). */
-export function dateInMonth(m: string, now = new Date()) {
-  const today = todayISO(now)
-  if (m === today.slice(0, 7)) return today
-  return `${m}-${String(Math.min(now.getDate(), daysInMonth(m))).padStart(2, '0')}`
-}
 
 // ---------- amounts ----------
 /** Amount fields accept arithmetic (the old sheet had "=100*30"). Digits and operators only. */
@@ -138,18 +129,57 @@ export function budgetState(actual: number, planned: number): BudgetState {
   const r = actual / planned
   return r > 1 ? 'over' : r >= WARN_AT ? 'warn' : 'ok'
 }
-/** Unspent plan ÷ days left in the month (today included). Other months divide by the whole month. */
-export function dailyBudget(planned: number, spent: number, month: string, today: string) {
-  const days = daysInMonth(month)
-  const daysLeft = today.slice(0, 7) === month ? Math.max(1, days - +today.slice(8, 10) + 1) : days
-  const left = planned - spent
-  return { daysLeft, left, perDay: left > 0 ? left / daysLeft : 0 }
+/** Normalised notes of the month's 'out' entries that name a plan row (amount irrelevant; blank rows never match). */
+export function paidNames(db: MoneyDb, month: string): Set<string> {
+  const names = new Set((db.months[month]?.plan ?? []).filter(r => r.name.trim()).map(r => norm(r.name)))
+  const paid = new Set<string>()
+  for (const e of db.entries) {
+    if (e.type !== 'out' || monthOf(e) !== month) continue
+    const n = norm(e.note)
+    if (names.has(n)) paid.add(n)
+  }
+  return paid
 }
-export const vsPlan = (plan: Row[], spentOf: (name: string) => number) => plan
-  .filter(p => p.name)
-  .map(p => ({ name: p.name, planned: +p.amount || 0, actual: spentOf(p.name) }))
-  .map(r => ({ ...r, diff: r.actual - r.planned }))
-  .sort((a, b) => b.diff - a.diff)
+export const isPaid = (row: Row, paid: Set<string>) => !!row.name.trim() && paid.has(norm(row.name))
+/** Newest matching 'out' entry id in the month (by date; entries are stored newest-first, so on a date tie the first match in array order is the most recently logged), or null. */
+export function paidEntryId(db: MoneyDb, month: string, name: string): string | null {
+  if (!name.trim()) return null
+  let best: Entry | null = null
+  for (const e of db.entries)
+    if (e.type === 'out' && monthOf(e) === month && norm(e.note) === norm(name) && (!best || e.date > best.date)) best = e
+  return best ? best.id : null
+}
+
+export interface Spendable {
+  hasPlan: boolean
+  income: number
+  committed: number
+  discretionary: number
+  left: number
+  daysLeft: number
+  perDay: number
+}
+export function spendable(db: MoneyDb, month: string, today: string): Spendable {
+  const m = db.months[month]
+  const ins = m?.income ?? []
+  const inMonth = db.entries.filter(e => monthOf(e) === month)
+  // Fall back on the amount, not on ins.length: a month created by any edit carries one 0-baht
+  // income row, and reading that as "income 0" turns an imported month red for no reason.
+  const income = sum(ins) || sum(inMonth.filter(e => e.type === 'in'))
+  const committed = sum(m?.plan ?? [])
+  // A paid bill is already in `committed`, but only via the one entry that marks the row paid —
+  // the same one unpayRow deletes. A second entry with that name is real extra spending.
+  const markers = new Set([...paidNames(db, month)].map(n => paidEntryId(db, month, n)))
+  const discretionary = sum(inMonth.filter(e => e.type === 'out' && !markers.has(e.id)))
+  const left = income - committed - discretionary
+  const dim = daysInMonth(month)
+  const daysLeft = today.slice(0, 7) === month ? Math.max(1, dim - +today.slice(8, 10) + 1) : dim
+  return {
+    hasPlan: ins.length > 0 || (m?.plan.length ?? 0) > 0,
+    income, committed, discretionary, left, daysLeft,
+    perDay: left > 0 ? left / daysLeft : 0,
+  }
+}
 
 /** Donut data: at most 6 slices, the rest folded into one — beyond that neighbouring colors blur. */
 export const PIE_MAX = 6
@@ -196,7 +226,9 @@ export function withIds(remote: MoneyDb): MoneyDb {
       ...(m.fuel ? { fuel: m.fuel } : {}),
     }
   }
-  return { months, entries: (remote.entries || []).map(e => ({ ...e, id: String(e.id) })) }
+  // Newest-first is an invariant the rest of the file relies on (see paidEntryId); the sheet keeps
+  // its own order and appends quick-adds at the end, so sort here too, not only in the merges.
+  return { months, entries: (remote.entries || []).map(e => ({ ...e, id: String(e.id) })).sort((a, b) => b.date.localeCompare(a.date)) }
 }
 
 /**
@@ -228,50 +260,7 @@ export function mergeBackup(db: MoneyDb, incoming: Partial<MoneyDb> | Entry[]): 
   }
 }
 
-// ---------- what the investing side (RPG) needs ----------
-const INVEST_BUCKET = /ลงทุน|invest|dca|หุ้น|กองทุน|เกษียณ/i
-
-export function summarizeMoney(db: MoneyDb, now = new Date()) {
-  const today = todayISO(now)
-  const month = today.slice(0, 7)
-  const flow = (m: string, type: Entry['type']) => sum(db.entries.filter(e => e.type === type && e.date.startsWith(m)))
-
-  // Planned income for this month, else the latest earlier month that has one, else logged income
-  const withIncome = Object.keys(db.months).filter(m => m <= month).sort().reverse().find(m => sum(db.months[m].income) > 0)
-  const plan = db.months[month]
-  const income = withIncome ? sum(db.months[withIncome].income) : flow(month, 'in')
-  const planned = plan ? sum(plan.plan) : 0
-
-  // Typical monthly spending: average of the last 3 completed months that have entries
-  const past = [...new Set(db.entries.filter(e => e.type === 'out' && monthOf(e) < month).map(monthOf))].sort().slice(-3)
-  const avgExpense = past.length ? sum(past, m => flow(m, 'out')) / past.length : planned
-
-  // DCA budget = the investing buckets' share of what's left after committed spending
-  const buckets = (plan ?? (withIncome ? db.months[withIncome] : undefined))?.buckets ?? []
-  const investFrac = sum(buckets.filter(b => INVEST_BUCKET.test(b.name)), b => b.pct)
-  const left = income - (plan ? planned : withIncome ? sum(db.months[withIncome].plan) : 0)
-
-  return {
-    month, income, planned, spent: flow(month, 'out'),
-    investPct: Math.round(investFrac * 1000) / 10,
-    investBudget: Math.round(Math.max(0, left) * investFrac),
-    avgExpense: Math.round(avgExpense),
-    loggedToday: db.entries.some(e => e.date === today),
-  }
-}
-export type MoneySummary = ReturnType<typeof summarizeMoney>
-
-// ---------- game layer ----------
-/** Consecutive days with at least one entry, ending today (or yesterday — today isn't over yet). */
-export function logStreak(entries: Entry[], now = new Date(), rest: string[] = []) {
-  const days = new Set([...entries.map(e => e.date), ...rest])
-  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  if (!days.has(todayISO(d))) d.setDate(d.getDate() - 1)
-  let n = 0
-  while (days.has(todayISO(d))) { n++; d.setDate(d.getDate() - 1) }
-  return n
-}
-
+// ---------- goals ----------
 /** Baht each bucket has been allocated, summed over the given months (what the plan says was set aside). */
 export function bucketTotals(db: MoneyDb, monthKeys = Object.keys(db.months)) {
   const tot: Record<string, number> = {}
@@ -283,58 +272,6 @@ export function bucketTotals(db: MoneyDb, monthKeys = Object.keys(db.months)) {
   return tot
 }
 
-/** Savings goals: target per bucket name (kept on this device, like learned envelopes). */
-export function goalProgress(totals: Record<string, number>, goals: Record<string, number>) {
-  return Object.entries(goals).filter(([, target]) => target > 0).map(([name, target]) => {
-    const saved = totals[name] || 0
-    return { name, target, saved, pct: Math.min(100, saved / target * 100), reached: saved >= target }
-  }).sort((a, b) => Number(a.reached) - Number(b.reached) || b.pct - a.pct)
-}
-
-/** Longest run of consecutive days in a set of YYYY-MM-DD dates. */
-export function bestStreak(dates: Iterable<string>) {
-  const ds = [...new Set(dates)].sort()
-  let best = 0, run = 0, prev = ''
-  for (const d of ds) {
-    const [y, m, dd] = d.split('-').map(Number)
-    run = prev && todayISO(new Date(y, m - 1, dd - 1)) === prev ? run + 1 : 1
-    best = Math.max(best, run)
-    prev = d
-  }
-  return best
-}
-
-/**
- * Each day of a month as a fight: the day's HP is the unspent plan ÷ days left (today included),
- * and spending that day is damage. `active` = something was logged, or the day was marked no-spend.
- */
-export function dayLog(db: MoneyDb, m: string, planned: number, rest: string[] = []) {
-  const out: Record<string, number> = {}
-  const active = new Set(rest.filter(d => d.startsWith(m)))
-  for (const e of db.entries) {
-    if (!e.date.startsWith(m)) continue
-    active.add(e.date)
-    if (e.type === 'out') out[e.date] = (out[e.date] || 0) + (+e.amount || 0)
-  }
-  const days = daysInMonth(m)
-  let before = 0
-  return Array.from({ length: days }, (_, i) => {
-    const date = `${m}-${String(i + 1).padStart(2, '0')}`
-    const max = Math.max(0, planned - before) / (days - i)
-    const spent = out[date] || 0
-    before += spent
-    return { date, max, spent, hp: max - spent, active: active.has(date) }
-  })
-}
-
-/** A month's envelopes as monsters: HP = what's left of each envelope's plan. */
-export const monsters = (plan: Row[], spentOf: (name: string) => number) => plan
-  .filter(p => p.name && !isDebt(p))
-  .map(p => {
-    const max = +p.amount || 0, spent = spentOf(p.name)
-    return { name: p.name, max, spent, hp: Math.max(0, max - spent), state: budgetState(spent, max) }
-  })
-
 // ---------- weeks ----------
 export const addDays = (iso: string, n: number) => {
   const [y, m, d] = iso.split('-').map(Number)
@@ -345,148 +282,30 @@ export const weekStart = (iso: string) => {
   const [y, m, d] = iso.split('-').map(Number)
   return addDays(iso, -((new Date(y, m - 1, d).getDay() + 6) % 7))
 }
-/** Day records (HP, spent, active) across a date range; each month uses its own plan. */
-export function dayRange(db: MoneyDb, from: string, to: string, rest: string[] = []) {
-  const out: ReturnType<typeof dayLog> = []
-  for (let m = from.slice(0, 7); m <= to.slice(0, 7); m = nextMonth(m))
-    out.push(...dayLog(db, m, sum(db.months[m]?.plan ?? []), rest).filter(d => d.date >= from && d.date <= to))
-  return out
+// ---------- summary data (spending only: type === 'out') ----------
+const outs = (db: MoneyDb) => db.entries.filter(e => e.type === 'out')
+/** Mon..Sun of the week containing `today`, spent per day. */
+export const weekDays = (db: MoneyDb, today: string) => {
+  const o = outs(db)
+  return Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(weekStart(today), i)
+    return { date, total: sum(o.filter(e => e.date === date)) }
+  })
 }
-/** "No-spend" days only count while they really have no spending. */
-export const validRest = (db: MoneyDb, rest: string[]) => {
-  const spent = new Set(db.entries.filter(e => e.type === 'out').map(e => e.date))
-  return rest.filter(d => !spent.has(d))
+/** Jan..Dec of `year`, spent per month (0 when empty). */
+export const monthTotals = (db: MoneyDb, year: string) => {
+  const o = outs(db)
+  return yearMonths(year).map(month => ({ month, total: sum(o.filter(e => monthOf(e) === month)) }))
 }
-
-/** The last 7 days (today included) as a battle report. */
-export function battleLog(db: MoneyDb, rest: string[] = [], today = todayISO()) {
-  const from = addDays(today, -6)
-  const rs = validRest(db, rest)
-  const days = dayRange(db, from, today, rs)
-  const outs = db.entries.filter(e => e.type === 'out' && e.date >= from && e.date <= today)
-  const env: Record<string, number> = {}
-  for (const e of outs) env[e.env] = (env[e.env] || 0) + (+e.amount || 0)
-  const top = Object.entries(env).sort((a, b) => b[1] - a[1])[0]
-  const big = [...outs].sort((a, b) => b.amount - a.amount)[0]
-  return {
-    from, spent: sum(outs), hits: outs.length,
-    active: days.filter(d => d.active).length,
-    good: days.filter(d => d.date < today && d.active && d.hp >= 0).length,
-    hurt: days.filter(d => d.date < today && d.hp < 0).length,
-    rest: days.filter(d => rs.includes(d.date)).length,
-    income: sum(db.entries.filter(e => e.type === 'in' && e.date >= from && e.date <= today)),
-    top: top ? { name: top[0], amount: top[1] } : null,
-    biggest: big ? { note: big.note, amount: +big.amount || 0 } : null,
-  }
+/** Spent per envelope in a month, biggest first. */
+export function envTotals(db: MoneyDb, month: string) {
+  const g: Record<string, number> = {}
+  for (const e of outs(db)) if (monthOf(e) === month) g[e.env] = (g[e.env] || 0) + (+e.amount || 0)
+  return Object.entries(g).map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value || a.label.localeCompare(b.label))
 }
-
-// Weekly challenge: one per week, picked from the week's Monday so every device agrees.
-const DRINK = /กาแฟ|coffee|ชานม|ชาเย็น|ชาไข่มุก|ชาไทย|starbucks|amazon|cafe|คาเฟ่/i
-export const CHALLENGES = ['log5', 'rest2', 'good4', 'noDrink', 'under'] as const
-export type Challenge = typeof CHALLENGES[number]
-export const CHALLENGE_GOAL: Record<Challenge, number> = { log5: 5, rest2: 2, good4: 4, noDrink: 3, under: 1 }
-/** Share of the week's HP you may spend in the "under" challenge. */
-export const UNDER_SHARE = 0.9
-
-export function weekChallenge(db: MoneyDb, start: string, rest: string[] = [], today = todayISO()) {
-  const key = [...start].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0
-  const id = CHALLENGES[key % CHALLENGES.length]
-  const end = addDays(start, 6)
-  const rs = validRest(db, rest)
-  const days = dayRange(db, start, end < today ? end : today, rs)
-  const done = days.filter(d => d.date < today) // finished days: today can still change
-  const drink = new Set(db.entries.filter(e => e.type === 'out' && DRINK.test(e.note)).map(e => e.date))
-  const n = id === 'log5' ? days.filter(d => d.active).length
-    : id === 'rest2' ? days.filter(d => rs.includes(d.date)).length
-    : id === 'good4' ? done.filter(d => d.active && d.hp >= 0).length
-    : id === 'noDrink' ? done.filter(d => d.active && !drink.has(d.date)).length
-    : Number(end < today && done.filter(d => d.active).length >= 3 && sum(done, d => d.max) > 0
-      && sum(done, d => d.spent) <= sum(done, d => d.max) * UNDER_SHARE)
-  const goal = CHALLENGE_GOAL[id]
-  return { id, start, end, n: Math.min(n, goal), goal, done: n >= goal }
-}
-
-export type RewardKind = 'day' | 'dungeon' | 'debt' | 'chest' | 'ach' | 'loot' | 'challenge' | 'sale' | 'trip' | 'angpao'
-export interface Reward { id: string; kind: RewardKind; arg: string; exp: number; gold: number }
-export const REWARD: Record<RewardKind, [exp: number, gold: number]> = {
-  day: [20, 5], dungeon: [300, 80], debt: [1000, 250], chest: [50, 15], ach: [200, 50], loot: [50, 20], challenge: [150, 40],
-  sale: [300, 80], trip: [200, 50], angpao: [100, 88],
-}
-export const CHEST_STEPS = [25, 50, 75, 100]
-export const ACHIEVEMENTS = ['first', 'streak7', 'streak30', 'rest', 'clean', 'freedom', 'goal'] as const
-export type Achievement = typeof ACHIEVEMENTS[number]
-
-/**
- * Everything the money side has earned so far, derived from the data alone (so it's the same on
- * every device). The game grants each id once and remembers it. Spending money never earns anything.
- */
-export const TRIP_GOAL = /เที่ยว|trip|travel|สงกรานต์|ปีใหม่|holiday/i
-export const TRIP_WINDOW = 30 // days before Songkran / New Year that a trip fund counts
-
-export function moneyRewards(db: MoneyDb, goals: Record<string, number>, rest: string[] = [], now = new Date(), pay?: Payday): Reward[] {
-  const today = todayISO(now), month = today.slice(0, 7)
-  const r: Reward[] = []
-  const add = (kind: RewardKind, arg: string, mult = 1) =>
-    r.push({ id: `${kind}:${arg}`, kind, arg, exp: REWARD[kind][0] * mult, gold: REWARD[kind][1] * mult })
-  const outs = db.entries.filter(e => e.type === 'out')
-  const restDays = validRest(db, rest)
-
-  // Good days (this month, finished days only): showed up and stayed within the day's HP
-  const cm = db.months[month]
-  if (cm && sum(cm.plan) > 0)
-    for (const d of dayLog(db, month, sum(cm.plan), restDays)) if (d.date < today && d.active && d.hp >= 0) add('day', d.date)
-
-  // Dungeons: finished months with a plan and spending, where no envelope and not the total went over
-  let clean = false
-  for (const [k, m] of Object.entries(db.months)) {
-    const mo = outs.filter(e => e.date.startsWith(k))
-    if (k >= month || !(sum(m.plan) > 0) || !mo.length || sum(mo) > sum(m.plan)) continue
-    if (monsters(m.plan, n => sum(mo.filter(e => e.env === n))).every(x => x.state !== 'over')) { add('dungeon', k); clean = true }
-  }
-
-  // Debt dragons: slain once any month shows the last installment
-  const slain = new Set<string>()
-  for (const [k, m] of Object.entries(db.months))
-    if (k <= month) for (const p of m.plan) if (p.name && p.of && periodN(p) >= p.of) slain.add(p.name)
-  for (const n of slain) add('debt', n)
-
-  // Treasure chests: each quarter of a savings goal opens one, the last one is worth more
-  let reached = false
-  for (const g of goalProgress(bucketTotals(db), goals))
-    for (const step of CHEST_STEPS) if (g.pct >= step) { add('chest', `${g.name}:${step}`, step === 100 ? 4 : 1); reached ||= step === 100 }
-
-  // Payday loot: the month's income logged — triple when the plan sends a share to an investing bucket
-  for (const k of new Set(db.entries.filter(e => e.type === 'in').map(monthOf)))
-    if (validMonth(k) && k <= month) add('loot', k, sum((db.months[k]?.buckets ?? []).filter(b => INVEST_BUCKET.test(b.name)), b => b.pct) > 0 ? 3 : 1)
-
-  // Weekly challenges: this week's once done, last week's if it was done by the end
-  const wk = weekStart(today)
-  for (const s of [addDays(wk, -7), wk]) if (weekChallenge(db, s, restDays, today).done) add('challenge', s)
-
-  // Festivals (this year and last, so a recent one still pays out)
-  const y = +today.slice(0, 4)
-  const events = [...eventsOfYear(y - 1, pay), ...eventsOfYear(y, pay)]
-  // Sale boss: a finished 9.9 / 10.10 / 11.11 / 12.12 you logged and stayed within the day's HP
-  for (const e of events.filter(e => e.kind === 'sale' && e.date < today && daysBetween(e.date, today) <= 60)) {
-    const m = db.months[e.date.slice(0, 7)]
-    const d = m && sum(m.plan) > 0 ? dayLog(db, e.date.slice(0, 7), sum(m.plan), restDays).find(x => x.date === e.date) : undefined
-    if (d?.active && d.hp >= 0) add('sale', e.date)
-  }
-  // Trip quest: a travel savings goal at least half full in the month before Songkran / New Year
-  const trip = goalProgress(bucketTotals(db), goals).some(g => TRIP_GOAL.test(g.name) && g.pct >= 50)
-  for (const e of events.filter(e => e.id === 'songkran' || e.id === 'newyear'))
-    if (trip && today <= e.date && daysBetween(today, e.date) <= TRIP_WINDOW) add('trip', `${e.id}:${e.date.slice(0, 4)}`)
-  // Ang pao: income logged around Chinese New Year
-  for (const yy of [y - 1, y]) {
-    const cny = CNY[yy] && `${yy}-${CNY[yy]}`
-    if (cny && db.entries.some(e => e.type === 'in' && e.date >= shiftDays(cny, -3) && e.date <= shiftDays(cny, 7) && e.date <= today)) add('angpao', String(yy))
-  }
-
-  const best = bestStreak([...db.entries.map(e => e.date), ...restDays])
-  const got: Record<Achievement, boolean> = {
-    first: db.entries.length > 0, streak7: best >= 7, streak30: best >= 30, rest: restDays.length > 0,
-    clean, freedom: slain.size > 0, goal: reached,
-  }
-  for (const a of ACHIEVEMENTS) if (got[a]) add('ach', a)
-  return r
+/** ISO date -> spent, for one month. */
+export function dayTotals(db: MoneyDb, month: string) {
+  const g: Record<string, number> = {}
+  for (const e of outs(db)) if (monthOf(e) === month) g[e.date] = (g[e.date] || 0) + (+e.amount || 0)
+  return g
 }

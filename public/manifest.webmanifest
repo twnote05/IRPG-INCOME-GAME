@@ -1,13 +1,13 @@
 {
-  "name": "Investor RPG",
-  "short_name": "Investor RPG",
-  "description": "Turn portfolio tracking and financial discipline into a retro RPG.",
+  "name": "รายรับ-รายจ่าย",
+  "short_name": "รายรับ-รายจ่าย",
+  "description": "บันทึกรายรับ-รายจ่าย วางแผนเดือน และดูว่าวันนี้ใช้ได้เท่าไหร่",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0f1235",
-  "theme_color": "#0a0c24",
+  "background_color": "#f4f3f0",
+  "theme_color": "#f4f3f0",
   "icons": [
     {
       "src": "icon-192.png",

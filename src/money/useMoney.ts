@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  DEFAULT_FUEL, blankMonth, carryMonth, dateInMonth, evalAmount, fuelCost, mergeBackup, mergeIntoRemote, monthOf, norm,
-  OTHER, bucketTotals, goalProgress, logStreak, moneyRewards, parseQuick, todayISO, prevMonth, summarizeMoney, thisMonth, uid, validGasUrl, validMonth, withIds,
+  DEFAULT_FUEL, blankMonth, carryMonth, evalAmount, fuelCost, mergeBackup, mergeIntoRemote, monthOf, norm,
+  OTHER, paidEntryId, bucketTotals, parseQuick, todayISO, nextMonth, prevMonth, thisMonth, uid, validGasUrl, validMonth, withIds,
   type Bucket, type Fuel, type MoneyDb, type MonthPlan, type Row,
 } from './logic'
 import type { Payday } from '../lib/calendar'
@@ -13,8 +13,8 @@ const K = {
   dirty: 'investor-rpg:money.dirty',
   learn: 'investor-rpg:money.learn',
   goals: 'investor-rpg:money.goals', // savings targets per bucket name — device-local, like learned envelopes
-  rest: 'investor-rpg:money.rest',
-  payday: 'investor-rpg:money.payday', // day of month or 'last' working day — device-local // days marked "spent nothing" — device-local, never sent to the sheet
+  rest: 'investor-rpg:money.rest', // retired: never read or written, key kept (no key is ever removed)
+  payday: 'investor-rpg:money.payday', // day of month or 'last' working day — device-local
   month: 'investor-rpg:money.month',
   gas: 'investor-rpg:money.gas',
   pulled: 'investor-rpg:money.pulled', // sheet URL this device has pulled from — pushing is only allowed after that
@@ -46,9 +46,9 @@ export function useMoney() {
   const [db, setDb] = useState<MoneyDb>(() => read(K.db, { months: {}, entries: [] }))
   const [learned, setLearned] = useState<Record<string, string>>(() => read(K.learn, {}))
   const [goals, setGoals] = useState<Record<string, number>>(() => read(K.goals, {}))
-  const [rest, setRest] = useState<string[]>(() => read(K.rest, []))
   const [payday, setPayday] = useState<Payday>(() => read(K.payday, 'last' as Payday))
   const [cur, setCur] = useState(() => { const m = read(K.month, ''); return validMonth(m) ? m : thisMonth() })
+  const [entryDate, setEntryDateRaw] = useState(() => todayISO()) // not persisted: a fresh launch starts on today
   const [gas, setGas] = useState<GasConfig | null>(() => read(K.gas, null))
   const [sync, setSync] = useState<SyncState>({ state: gas ? 'syncing' : 'local' })
 
@@ -61,7 +61,6 @@ export function useMoney() {
   useEffect(() => write(K.db, db), [db])
   useEffect(() => write(K.learn, learned), [learned])
   useEffect(() => write(K.goals, goals), [goals])
-  useEffect(() => write(K.rest, rest), [rest])
   useEffect(() => write(K.payday, payday), [payday])
   useEffect(() => write(K.month, cur), [cur])
 
@@ -170,12 +169,33 @@ export function useMoney() {
   const planNames = useMemo(() => (month?.plan ?? []).map(p => p.name).filter(Boolean), [month])
 
   // ---------- log ----------
-  /** `onToday`: the home screen always logs today, whatever month the log tab is showing. */
-  const addQuick = (text: string, onToday = false) => {
+  // The date wins: an entry lands on its date and the view follows it to that month.
+  // setCur is only called from these event handlers, never from an effect, so it cannot loop.
+  const showMonthOf = (date: string) => setCur(m => (validMonth(monthOf({ date })) ? monthOf({ date }) : m))
+  const validDate = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d) && validMonth(d.slice(0, 7))
+  const setEntryDate = (d: string) => {
+    if (!validDate(d)) return // cleared field: keep the last good date
+    setEntryDateRaw(d)
+    showMonthOf(d)
+  }
+  const setDate = (id: string, date: string) => {
+    if (!validDate(date)) return
+    setDb(prev => {
+      const n = structuredClone(prev)
+      const e = n.entries.find(x => x.id === id)
+      if (e) e.date = date
+      return n
+    })
+    markDirty()
+    showMonthOf(date)
+  }
+  const addQuick = (text: string) => {
     const e = parseQuick(text, planNames, learned)
     if (!e) return null
-    const entry = { id: uid(), date: onToday ? todayISO() : dateInMonth(cur), ...e }
-    mutate(d => { d.entries.unshift(entry) })
+    const entry = { id: uid(), date: entryDate, ...e }
+    setDb(prev => ({ ...prev, entries: [entry, ...prev.entries] }))
+    markDirty()
+    showMonthOf(entryDate)
     return entry
   }
   const setEnv = (id: string, env: string) => {
@@ -188,6 +208,24 @@ export function useMoney() {
   const delEntry = (id: string) => {
     snapshot(db.entries.find(e => e.id === id)?.note ?? '')
     mutate(d => { d.entries = d.entries.filter(e => e.id !== id) })
+  }
+
+  // Paying logs an expense named after the row and nothing else: n/of/total belong to carryMonth().
+  // Paid state is derived from entries, so unpay is just the undoable delete.
+  const payRow = (row: Row) => {
+    if (!row.name.trim()) return
+    // The row belongs to the viewed month, so its payment must land there. Carrying the plan forward
+    // and paying down the list would otherwise file every bill under whatever month entryDate holds
+    // and drag the picker along with it. The date only wins while it is already inside `cur`.
+    const date = monthOf({ date: entryDate }) === cur ? entryDate : `${cur}-01`
+    const entry = { id: uid(), date, type: 'out' as const, env: row.name, note: row.name, amount: row.amount }
+    setDb(prev => ({ ...prev, entries: [entry, ...prev.entries] }))
+    markDirty()
+    showMonthOf(date) // a no-op now — kept so "the date wins, the view follows" still reads true here
+  }
+  const unpayRow = (row: Row) => {
+    const id = paidEntryId(db, cur, row.name)
+    if (id) delEntry(id)
   }
 
   // ---------- plan ----------
@@ -221,7 +259,7 @@ export function useMoney() {
   })
 
   // ---------- backup ----------
-  const exportJson = () => JSON.stringify({ ...db, learn: learned, goals, rest }, null, 2)
+  const exportJson = () => JSON.stringify({ ...db, learn: learned, goals }, null, 2)
   const exportCsv = () => '﻿date,type,envelope,note,amount\n' + db.entries.map(e =>
     [e.date, e.type, e.env, `"${String(e.note).replace(/"/g, '""')}"`, e.amount].join(',')).join('\n')
   const importJson = (text: string) => {
@@ -230,7 +268,6 @@ export function useMoney() {
     setDb(prev => mergeBackup(prev, incoming))
     if (!Array.isArray(d) && d.learn) setLearned(l => ({ ...d.learn, ...l }))
     if (!Array.isArray(d) && d.goals) setGoals(g => ({ ...d.goals, ...g }))
-    if (!Array.isArray(d) && Array.isArray(d.rest)) setRest(r => [...new Set([...r, ...d.rest])])
     markDirty()
   }
   const unlearn = (k: string) => setLearned(l => { const n = { ...l }; delete n[k]; return n })
@@ -241,20 +278,14 @@ export function useMoney() {
     return n
   })
 
-  const months = useMemo(() => [...new Set([...Object.keys(db.months), ...db.entries.map(monthOf), cur, thisMonth()])]
+  const months = useMemo(() => [...new Set([...Object.keys(db.months), ...db.entries.map(monthOf), cur, thisMonth(), nextMonth(thisMonth())])]
     .filter(validMonth).sort().reverse(), [db, cur])
-  const restToday = () => setRest(r => r.includes(todayISO()) ? r : [...r, todayISO()])
-  const summary = useMemo(() => {
-    const s = summarizeMoney(db)
-    return { ...s, loggedToday: s.loggedToday || rest.includes(todayISO()), streak: logStreak(db.entries, new Date(), rest), rewards: moneyRewards(db, goals, rest, new Date(), payday) }
-  }, [db, goals, rest, payday])
   const saved = useMemo(() => bucketTotals(db), [db])
-  const goalList = useMemo(() => goalProgress(saved, goals), [saved, goals])
 
   return {
-    db, cur, setCur, months, month, planNames, learned, summary, goals, goalList, saved, setGoal, rest, restToday, payday, setPayday,
+    db, cur, setCur, months, month, planNames, learned, goals, saved, setGoal, payday, setPayday,
     gas, sync, connect, disconnect, syncNow: () => (read(K.dirty, null) && canPush() ? pushUp() : pullDown()),
-    addQuick, setEnv, setAmount, delEntry, undo, undoDelete,
+    entryDate, setEntryDate, setDate, addQuick, setEnv, setAmount, delEntry, payRow, unpayRow, undo, undoDelete,
     updateRow, addRow, delRow, addDebt, carry, setFuel, applyFuel,
     exportJson, exportCsv, importJson, unlearn, clearLearned, evalAmount,
   }

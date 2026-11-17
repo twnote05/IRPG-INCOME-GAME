@@ -1,6 +1,0 @@
-settrade-v2==2.2.1
-fastapi
-uvicorn[standard]
-httpx
-python-dotenv
-yfinance

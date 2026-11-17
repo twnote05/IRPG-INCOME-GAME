@@ -1,5 +1,4 @@
-// Festive calendar: Thai holidays, shopping-sale days, payday and tax dates, plus which ones change the
-// game (sale boss, trip quest, ang pao, scene decorations) and the time-of-day sky.
+// Festive calendar: Thai holidays, shopping-sale days, payday and tax dates, shown on the month calendar.
 // Pure functions, no runtime imports — `npm run check` runs this under plain Node.
 
 export type EventKind = 'holiday' | 'sale' | 'payday' | 'tax'
@@ -50,7 +49,7 @@ export function paydayOf(month: string, pay: Payday = 'last') {
   return iso(d)
 }
 
-export function eventsOfYear(year: number, pay: Payday = 'last'): CalEvent[] {
+function eventsOfYear(year: number, pay: Payday = 'last'): CalEvent[] {
   const out: CalEvent[] = FIXED.map(f => ({ id: f.id, date: `${year}-${f.md}`, kind: f.kind, icon: f.icon }))
   if (CNY[year]) out.push({ id: 'cny', date: `${year}-${CNY[year]}`, kind: 'holiday', icon: '🧧' })
   if (LOY_KRATHONG[year]) out.push({ id: 'loykrathong', date: `${year}-${LOY_KRATHONG[year]}`, kind: 'holiday', icon: '🪷' })
@@ -58,40 +57,3 @@ export function eventsOfYear(year: number, pay: Payday = 'last'): CalEvent[] {
   return out.sort((a, b) => a.date.localeCompare(b.date))
 }
 export const eventsInMonth = (month: string, pay?: Payday) => eventsOfYear(+month.slice(0, 4), pay).filter(e => e.date.startsWith(month))
-
-/** Soonest events from today (today included), up to `days` ahead. */
-export function upcoming(today: string, days = 45, pay?: Payday) {
-  const y = +today.slice(0, 4)
-  return [...eventsOfYear(y, pay), ...eventsOfYear(y + 1, pay)]
-    .map(e => ({ ...e, inDays: daysBetween(today, e.date) }))
-    .filter(e => e.inDays >= 0 && e.inDays <= days)
-}
-
-// ---------- scene decorations ----------
-export type Season = 'songkran' | 'loykrathong' | 'christmas' | 'newyear' | 'cny'
-/** Decoration shown in the hero's scene on/around a festival. */
-export function seasonOn(date: string): Season | null {
-  const y = +date.slice(0, 4), md = date.slice(5)
-  const near = (center: string | undefined, before: number, after: number) => {
-    if (!center) return false
-    const d = daysBetween(`${y}-${center}`, date)
-    return d >= -before && d <= after
-  }
-  if (md >= '04-12' && md <= '04-16') return 'songkran'
-  if (near(LOY_KRATHONG[y], 1, 1)) return 'loykrathong'
-  if (near(CNY[y], 1, 3)) return 'cny'
-  if (md >= '12-30' || md <= '01-02') return 'newyear'
-  if (md >= '12-20' && md <= '12-26') return 'christmas'
-  return null
-}
-
-// ---------- sky by time of day ----------
-export type SkyTime = 'dawn' | 'day' | 'dusk' | 'night'
-export const skyAt = (hour: number): SkyTime => (hour >= 5 && hour < 7 ? 'dawn' : hour >= 7 && hour < 17 ? 'day' : hour >= 17 && hour < 19 ? 'dusk' : 'night')
-/** Recolors for the scene chars: 1–4 sky bands, 0 near hills, 5 far mountains, 7 stars, 8/9 moon or sun. */
-export const SKY: Record<SkyTime, Record<string, string>> = {
-  night: { '1': '#0f1235', '2': '#1b2050', '3': '#2c3470', '4': '#3c4aa8', '0': '#2c3470', '5': '#6a74b8', '7': '#f7f0dc', '8': '#f7f0dc', '9': '#ffffff' },
-  dawn: { '1': '#3b3f8f', '2': '#7a5aa8', '3': '#d97a9a', '4': '#f2a36b', '0': '#5a4a7a', '5': '#8a7ab0', '7': '#3b3f8f', '8': '#ffd27a', '9': '#fff1c4' },
-  day: { '1': '#3f8fe0', '2': '#5aa8ee', '3': '#7cc0f5', '4': '#a9d8fa', '0': '#4b6a9a', '5': '#7f93c4', '7': '#3f8fe0', '8': '#ffd23f', '9': '#fff4a8' },
-  dusk: { '1': '#2c2f7a', '2': '#6b3f8f', '3': '#c9546b', '4': '#f28b4a', '0': '#4a3a6a', '5': '#7a5a8a', '7': '#2c2f7a', '8': '#ff9d4a', '9': '#ffd08a' },
-}
