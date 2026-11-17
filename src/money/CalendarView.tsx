@@ -6,10 +6,11 @@ import type { Dict } from '../lib/i18n'
 import { dayTotals, daysInMonth, spendable, todayISO } from './logic'
 import type { Money } from './useMoney'
 
-type Tile = 'over' | 'under' | 'none' | 'future'
+type Tile = 'over' | 'under' | 'plain' | 'none' | 'future'
 const TILE: Record<Tile, string> = {
   over: 'bg-(--t-over) text-(--t-fg)',
   under: 'bg-(--t-under) text-(--t-fg)',
+  plain: 'bg-(--t-none) text-(--t-fg)',
   none: 'bg-(--t-none) text-(--t-fg)',
   future: 'bg-transparent text-(--t-future)',
 }
@@ -53,9 +54,12 @@ export default function CalendarView({ money, t }: { money: Money; t: Dict }) {
   const shown = full ? days : days.slice(Math.max(0, w0), w0 + 7)
   const pad = full ? lead : Math.max(0, -w0)
 
+  // With no plan, or a plan with nothing left (perDay 0), there is no daily figure to be over or
+  // under. Calling those days 'under' painted an overspent month all green while the card above it
+  // said ใช้เกินแผนแล้ว, so they get a neutral tile and the legend says there is no figure.
+  const hasFigure = sp.hasPlan && sp.perDay > 0
   const state = (d: typeof days[number]): Tile =>
-    // No plan, or a plan with nothing left (perDay 0): no daily figure to be over, so a spent day is 'under' (month-level overspend shows on the today card).
-    d.date > today ? 'future' : !d.spent ? 'none' : sp.hasPlan && sp.perDay > 0 && d.spent > sp.perDay ? 'over' : 'under'
+    d.date > today ? 'future' : !d.spent ? 'none' : !hasFigure ? 'plain' : d.spent > sp.perDay ? 'over' : 'under'
   const nextEv = events.find(e => e.date >= today)
   const jump = (date: string) => {
     setFull(false)
@@ -65,7 +69,7 @@ export default function CalendarView({ money, t }: { money: Money; t: Dict }) {
   const legend = (k: 'under' | 'over', count?: number) => (
     <span key={k} className="flex items-center gap-1">
       <span aria-hidden className={`inline-block size-3.5 shrink-0 rounded-sm border border-line ${TILE[k]}`} />
-      <span className={k === 'over' ? OVER : ''}>{t.cal.legend[k]}</span>
+      <span>{k === 'over' && <span aria-hidden>▲ </span>}{t.cal.legend[k]}</span>
       {count !== undefined && count}
     </span>
   )
@@ -81,7 +85,9 @@ export default function CalendarView({ money, t }: { money: Money; t: Dict }) {
     </>}>
       {!open && !full ? (
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
-          {(['under', 'over'] as const).map(k => legend(k, days.filter(d => state(d) === k).length))}
+          {hasFigure
+            ? (['under', 'over'] as const).map(k => legend(k, days.filter(d => state(d) === k).length))
+            : <span>{t.cal.legend.noFigure}</span>}
           {nextEv && <span>{nextEv.icon} {+nextEv.date.slice(8)} {t.cal.names[nextEv.id]}</span>}
         </p>
       ) : <>

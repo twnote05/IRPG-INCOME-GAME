@@ -1,10 +1,10 @@
-import { NotebookPen, X } from 'lucide-react'
+import { CalendarDays, NotebookPen, X } from 'lucide-react'
 import { useMemo } from 'react'
 import QuickAdd from './QuickAdd'
 import CalendarView from './CalendarView'
 import type { Dict, Lang } from '../lib/i18n'
 import { Panel } from '../components/ui'
-import { INCOME_ENV, OTHER, monthOf, spendable, sum, todayISO } from './logic'
+import { INCOME_ENV, OTHER, monthOf, spendable, sum, thisMonth, todayISO } from './logic'
 import { dayLabel, fmt0 } from './fmt'
 import type { Money } from './useMoney'
 
@@ -18,6 +18,9 @@ export default function LogView({ money, t, lang }: { money: Money; t: Dict; lan
     return Object.entries(g).sort((a, b) => b[0].localeCompare(a[0]))
   }, [rows])
   const b = spendable(db, cur, todayISO())
+  // "เหลือใช้ได้วันละ" only means something for the month you are living in. On a past or future
+  // month daysLeft falls back to the whole month, which read as "อีก 31 วันกว่าจะสิ้นเดือน" in October.
+  const isNow = cur === thisMonth()
   const envs = [OTHER, ...planNames, INCOME_ENV]
 
   return (
@@ -29,7 +32,7 @@ export default function LogView({ money, t, lang }: { money: Money; t: Dict; lan
       </div>
       <p className="-mt-2 px-1 text-[11px] text-muted">{t.money.hint}</p>
 
-      {b.hasPlan && (
+      {isNow && b.hasPlan && (
         <div className="flex flex-wrap items-baseline gap-x-2 rounded-xl border border-line bg-card px-3 py-2.5">
           <span className="text-xs text-muted">{b.left > 0 ? t.money.perDayLeft : t.money.overPlan}</span>
           <b className={`font-mono text-3xl font-bold ${b.left > 0 ? 'text-accent' : 'text-neg'}`}>{fmt0(b.left > 0 ? b.perDay : -b.left)}</b>
@@ -52,8 +55,11 @@ export default function LogView({ money, t, lang }: { money: Money; t: Dict; lan
                   {!envs.includes(e.env) && <option value={OTHER}>{e.env}</option>}
                   {envs.map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
-                <input type="date" className="field h-11 w-11 shrink-0 !px-0 !py-0 !text-xs [&::-webkit-datetime-edit]:hidden" value={e.date}
-                  onChange={ev => money.setDate(e.id, ev.target.value)} aria-label={t.money.changeDate(e.note)} />
+                <label className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line text-muted focus-within:outline-2 focus-within:outline-accent">
+                  <CalendarDays size={18} aria-hidden />
+                  <input type="date" className="absolute inset-0 h-full w-full cursor-pointer opacity-0" value={e.date}
+                    onChange={ev => money.setDate(e.id, ev.target.value)} aria-label={t.money.changeDate(e.note)} />
+                </label>
                 <button className={`h-11 w-20 shrink-0 px-1 text-right font-mono text-sm font-bold ${e.type === 'in' ? 'text-pos' : 'text-ink'}`}
                   aria-label={t.money.editAmount(e.note)}
                   onClick={() => {
