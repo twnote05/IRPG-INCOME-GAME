@@ -1,4 +1,4 @@
-import { BarChart3, Languages, Map as MapIcon, Moon, NotebookPen, Sun, Wallet } from 'lucide-react'
+import { BarChart3, Languages, Map as MapIcon, Moon, NotebookPen, Sun, LayoutGrid } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { DICT, type Lang } from './lib/i18n'
 import MoneyApp, { MONEY_TABS, type MoneyTab } from './money/MoneyApp'
@@ -46,7 +46,7 @@ export default function App() {
       <header ref={header} className="sticky top-0 z-30 border-b border-line bg-card pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex max-w-3xl items-center gap-x-3 px-3 py-1.5 sm:px-4">
           <h1 className="flex min-w-0 items-center gap-2 text-base font-semibold sm:text-lg">
-            <Wallet size={18} className="shrink-0 text-muted" /> <span className="truncate">{t.appName}</span>
+            <LayoutGrid size={18} className="shrink-0 text-muted" /> <span className="truncate">{t.appName}</span>
           </h1>
           <div className="ml-auto flex shrink-0 items-center gap-1.5">
             <button onClick={() => setPrefs(p => ({ ...p, lang: p.lang === 'th' ? 'en' : 'th' }))}

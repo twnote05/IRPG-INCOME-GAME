@@ -1,5 +1,5 @@
 const en = {
-  appName: 'Income & Expenses',
+  appName: 'KayanJoD',
   switchLang: 'ภาษาไทย',
   switchLangAria: 'Switch language to Thai',
   darkMode: 'Dark mode',
@@ -150,7 +150,7 @@ const en = {
 export type Dict = typeof en
 
 const th: Dict = {
-  appName: 'รายรับ-รายจ่าย',
+  appName: 'KayanJoD',
   switchLang: 'English',
   switchLangAria: 'เปลี่ยนภาษาเป็นอังกฤษ',
   darkMode: 'โหมดมืด',
